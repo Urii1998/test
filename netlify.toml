@@ -1,13 +1,40 @@
+# --- НАСТРОЙКИ ПРОКСИ (NETLIFY) ---
+# Этот файл говорит Netlify: "Когда сайт просит /api/..., сходи на сервер Piped и принеси данные".
+# Если видео не грузятся, поменяйте сервер ниже (раскомментируйте другой блок).
+
+# ВАРИАНТ 1: Kavin.rocks (Официальный, мощный, часто работает через серверные прокси)
 [[redirects]]
   from = "/api/*"
-  to = "https://api.piped.projectsegfau.lt/:splat"
+  to = "https://pipedapi.kavin.rocks/:splat"
   status = 200
   force = true
   headers = {X-From = "Netlify-Proxy"}
 
-
+# ВАРИАНТ 2: Tokhmi (США, часто лоялен)
+# Чтобы включить этот, поставьте '#' перед строками Варианта 1 и уберите '#' здесь.
 # [[redirects]]
 #   from = "/api/*"
 #   to = "https://pipedapi.tokhmi.xyz/:splat"
+#   status = 200
+#   force = true
+
+# ВАРИАНТ 3: Libre (Индия, меньше нагрузка)
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://pipedapi-libre.kavin.rocks/:splat"
+#   status = 200
+#   force = true
+
+# ВАРИАНТ 4: Adminforge (Германия, строгий, но быстрый)
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://pipedapi.adminforge.de/:splat"
+#   status = 200
+#   force = true
+
+# ВАРИАНТ 5: ProjectSegfau (Если вдруг заработает снова)
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://api.piped.projectsegfau.lt/:splat"
 #   status = 200
 #   force = true
