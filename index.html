@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FreeView | Свободный Доступ</title>
     
-    <!-- PWA Manifest info (meta tags emulation for simple install) -->
+    <!-- PWA Manifest info -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f0f0f">
     
-    <!-- Styles & Icons -->
+    <!-- Tailwind CSS (CDN версия для быстрого запуска без сборки) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -18,19 +18,15 @@
         :root { --bg: #0f0f0f; --surface: #1e1e1e; --primary: #e53e3e; --text: #f3f4f6; }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Скрытие скроллбара но сохранение функционала */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Анимации */
         .fade-enter { animation: fadeEnter 0.3s ease-out forwards; opacity: 0; transform: translateY(10px); }
         @keyframes fadeEnter { to { opacity: 1; transform: translateY(0); } }
 
-        /* Loader */
         .spinner { width: 24px; height: 24px; border: 3px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Нижнее меню для мобилок */
         .nav-item.active { color: var(--primary); }
         .nav-item.active i { transform: scale(1.1); }
     </style>
@@ -57,10 +53,10 @@
         </div>
     </header>
 
-    <!-- Основная область контента (скроллируемая) -->
+    <!-- Основная область контента -->
     <main id="mainContainer" class="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#0f0f0f] pb-20 no-scrollbar">
         
-        <!-- Секция: Видео Плеер (Overlay) -->
+        <!-- Плеер -->
         <div id="playerOverlay" class="hidden fixed inset-0 z-50 bg-black flex flex-col">
             <div class="flex items-center justify-between p-3 bg-black/80 backdrop-blur absolute top-0 w-full z-10">
                 <button onclick="player.minimize()" class="text-white p-2"><i class="fas fa-chevron-down"></i> Свернуть</button>
@@ -72,7 +68,8 @@
             </div>
             
             <div class="mt-12 w-full bg-black aspect-video relative flex items-center justify-center">
-                <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+                <!-- Обновленные права доступа (allow) для уменьшения ошибок консоли -->
+                <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
                 <div id="playerLoader" class="absolute inset-0 flex items-center justify-center bg-black hidden">
                     <div class="spinner"></div>
                 </div>
@@ -93,7 +90,7 @@
             </div>
         </div>
 
-        <!-- Секция: Главная / Результаты -->
+        <!-- Контент -->
         <div class="max-w-4xl mx-auto p-4 min-h-full">
             
             <!-- Инфо-панель -->
@@ -102,7 +99,7 @@
                 <span id="currentServer" class="font-mono text-gray-400">...</span>
             </div>
 
-            <!-- Табы на главной -->
+            <!-- Табы -->
             <div id="homeTabs" class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
                 <button onclick="app.loadTrends('News')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">📰 Новости</button>
                 <button onclick="app.loadTrends('Politics')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">⚖️ Политика</button>
@@ -110,25 +107,21 @@
                 <button onclick="app.loadHistory()" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">🕒 История</button>
             </div>
 
-            <!-- Контейнер для Видео -->
-            <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-20">
-                <!-- Video Cards Injected Here -->
-            </div>
+            <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-20"></div>
             
-            <!-- Лоадер страницы -->
             <div id="pageLoader" class="hidden py-10 flex justify-center w-full">
                 <div class="spinner"></div>
             </div>
 
-            <!-- Сообщение "Пусто" или Ошибка -->
             <div id="emptyState" class="hidden text-center mt-20 text-gray-500">
                 <i class="far fa-compass text-4xl mb-3"></i>
                 <p id="emptyText">Здесь пока пусто</p>
+                <button onclick="app.toggleSettings()" class="mt-4 text-xs text-blue-400 underline">Настроить сервер вручную</button>
             </div>
         </div>
     </main>
 
-    <!-- Нижняя Навигация (Mobile App Style) -->
+    <!-- Навигация -->
     <nav class="fixed bottom-0 w-full bg-[#1e1e1e] border-t border-gray-800 pb-safe z-40">
         <div class="flex justify-around items-center h-14 max-w-4xl mx-auto">
             <button onclick="app.nav('home')" class="nav-item active flex flex-col items-center gap-1 text-gray-500 w-full" id="navHome">
@@ -152,12 +145,16 @@
             <h3 class="text-xl font-bold mb-4">Настройки</h3>
             
             <div class="mb-4">
-                <label class="text-xs text-gray-400 uppercase font-bold">Текущий сервер</label>
-                <div class="flex gap-2 mt-1">
-                    <input id="setServerInput" type="text" readonly class="w-full bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-300">
-                    <button onclick="serverManager.findBest(true)" class="bg-red-600 text-white px-3 rounded text-sm"><i class="fas fa-sync"></i></button>
+                <label class="text-xs text-gray-400 uppercase font-bold">Сервер (Зеркало)</label>
+                <p class="text-[10px] text-gray-500 mb-2">Если автопоиск не работает, введите адрес вручную (например: https://invidious.fdn.fr)</p>
+                <div class="flex gap-2">
+                    <!-- Поле теперь редактируемое -->
+                    <input id="setServerInput" type="text" placeholder="https://..." class="w-full bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-300 focus:border-red-500 focus:outline-none">
+                    <button onclick="serverManager.manualSet()" class="bg-blue-600 text-white px-3 rounded text-sm whitespace-nowrap">Сохранить</button>
                 </div>
-                <p class="text-[10px] text-gray-500 mt-1">Нажмите кнопку обновления, чтобы найти зеркало с лучшим пингом.</p>
+                <button onclick="serverManager.findBest(true)" class="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-xs py-2 rounded flex items-center justify-center gap-2">
+                    <i class="fas fa-sync"></i> Авто-поиск лучшего зеркала
+                </button>
             </div>
 
             <div class="mb-6">
@@ -176,11 +173,16 @@
 
     <!-- JavaScript Logic -->
     <script>
-        // --- 1. Менеджер Серверов (Core) ---
         const serverManager = {
+            // Обновленный список зеркал (более дружелюбные к CORS)
             list: [
-                'https://inv.tux.pizza', 'https://vid.puffyan.us', 'https://invidious.projectsegfau.lt',
-                'https://yt.artemislena.eu', 'https://invidious.drgns.space', 'https://inv.bp.projectsegfau.lt'
+                'https://invidious.fdn.fr',
+                'https://invidious.flokinet.to',
+                'https://invidious.perennialteks.com',
+                'https://yewtu.be',
+                'https://inv.tux.pizza',
+                'https://vid.puffyan.us',
+                'https://invidious.protokolla.fi'
             ],
             current: null,
 
@@ -189,49 +191,65 @@
                 if (cached) {
                     this.current = cached;
                     ui.updateServer(cached);
-                    return; // Используем сохраненный для скорости
+                    // Проверяем, жив ли он, в фоне
+                    this.check(cached).catch(() => this.findBest(true));
+                    return;
                 }
                 await this.findBest();
+            },
+
+            async check(url) {
+                const c = new AbortController();
+                setTimeout(() => c.abort(), 5000);
+                const r = await fetch(`${url}/api/v1/stats`, { signal: c.signal });
+                if(!r.ok) throw new Error('Server error');
+                return url;
             },
 
             async findBest(force = false) {
                 if (force) ui.status("Поиск лучшего зеркала...", "blue");
                 
-                // Простая гонка запросов
-                const check = async (url) => {
-                    try {
-                        const c = new AbortController();
-                        setTimeout(() => c.abort(), 3500);
-                        const r = await fetch(`${url}/api/v1/stats`, { signal: c.signal });
-                        if(r.ok) return url;
-                        throw new Error();
-                    } catch(e) { throw e; }
-                };
-
                 try {
-                    const winner = await Promise.any(this.list.map(check));
-                    this.current = winner;
-                    localStorage.setItem('fv_server', winner);
-                    ui.updateServer(winner);
+                    const winner = await Promise.any(this.list.map(url => this.check(url)));
+                    this.set(winner);
                     ui.status("Сервер обновлен", "green");
                     setTimeout(() => ui.hideStatus(), 2000);
                     return winner;
                 } catch (e) {
-                    ui.status("Все серверы заняты. Пробуем первый...", "red");
-                    this.current = this.list[0];
+                    ui.status("Ошибка CORS. Попробуйте другой сервер вручную.", "red");
+                    this.current = this.list[0]; // Fallback
+                    app.toggleSettings(); // Открываем настройки, чтобы пользователь видел проблему
                     return this.list[0];
                 }
+            },
+
+            manualSet() {
+                const val = document.getElementById('setServerInput').value.trim();
+                if(val.startsWith('http')) {
+                    this.set(val);
+                    alert('Сервер сохранен вручную');
+                    app.toggleSettings();
+                    app.loadTrends('News');
+                } else {
+                    alert('Введите полный URL (начиная с https://)');
+                }
+            },
+
+            set(url) {
+                // Убираем слеш в конце, если есть
+                const cleanUrl = url.replace(/\/$/, "");
+                this.current = cleanUrl;
+                localStorage.setItem('fv_server', cleanUrl);
+                ui.updateServer(cleanUrl);
             }
         };
 
-        // --- 2. Управление Подписками (Local Database) ---
         const subs = {
             data: JSON.parse(localStorage.getItem('fv_subs') || '[]'),
-            
             toggle() {
                 if (!player.currentVideo) return;
                 const author = player.currentVideo.author;
-                const authorId = player.currentVideo.authorId; // Invidious дает authorId
+                const authorId = player.currentVideo.authorId;
                 
                 const idx = this.data.findIndex(s => s.name === author);
                 const btn = document.getElementById('subBtn');
@@ -249,11 +267,7 @@
                 }
                 localStorage.setItem('fv_subs', JSON.stringify(this.data));
             },
-
-            isSubbed(authorName) {
-                return this.data.some(s => s.name === authorName);
-            },
-
+            isSubbed(authorName) { return this.data.some(s => s.name === authorName); },
             export() {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.data));
                 const node = document.createElement('a');
@@ -263,211 +277,141 @@
             }
         };
 
-        // --- 3. Плеер ---
         const player = {
             currentVideo: null,
-            
             open(videoData) {
                 this.currentVideo = videoData;
                 document.getElementById('playerOverlay').classList.remove('hidden');
-                
-                // UI Info
                 document.getElementById('plTitle').textContent = videoData.title;
                 document.getElementById('plAuthor').textContent = videoData.author;
                 document.getElementById('plViews').textContent = videoData.viewCountText;
-                document.getElementById('plDesc').textContent = "Загрузка описания...";
+                document.getElementById('plDesc').textContent = "Загрузка...";
                 
-                // Button state
                 const subBtn = document.getElementById('subBtn');
-                if (subs.isSubbed(videoData.author)) {
-                    subBtn.textContent = "Вы подписаны";
-                    subBtn.classList.add('bg-red-600', 'text-white');
-                    subBtn.classList.remove('bg-gray-700');
-                } else {
-                    subBtn.textContent = "Подписаться";
-                    subBtn.classList.remove('bg-red-600', 'text-white');
-                    subBtn.classList.add('bg-gray-700');
-                }
+                const isSub = subs.isSubbed(videoData.author);
+                subBtn.textContent = isSub ? "Вы подписаны" : "Подписаться";
+                subBtn.className = isSub ? 'bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold transition' : 'bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-full text-xs font-bold transition';
 
                 this.loadSource();
             },
-
             loadSource() {
                 const frame = document.getElementById('videoFrame');
                 const loader = document.getElementById('playerLoader');
                 loader.classList.remove('hidden');
-                
-                // Используем local=true для проксирования через инстанс
-                // autoplay=1 запускает видео
                 frame.src = `${serverManager.current}/embed/${this.currentVideo.videoId}?autoplay=1&local=true&dark_mode=true`;
-                
                 frame.onload = () => loader.classList.add('hidden');
-                
-                // Подгружаем полное описание отдельно
                 this.fetchDetails(this.currentVideo.videoId);
             },
-
             async fetchDetails(id) {
                 try {
                     const res = await fetch(`${serverManager.current}/api/v1/videos/${id}`);
                     const data = await res.json();
                     document.getElementById('plDesc').textContent = data.description || "Нет описания";
-                    // Обновляем authorId для корректной подписки
                     this.currentVideo.authorId = data.authorId;
                 } catch(e) {}
             },
-
             minimize() {
                 document.getElementById('playerOverlay').classList.add('hidden');
-                document.getElementById('videoFrame').src = ""; // Stop playback
+                document.getElementById('videoFrame').src = "";
             },
-
             async switchServer() {
                 await serverManager.findBest(true);
-                this.loadSource(); // Перезагружаем фрейм с новым доменом
+                this.loadSource();
             }
         };
 
-        // --- 4. Приложение (UI & Logic) ---
         const app = {
-            view: 'home', // home, subs, settings
-
+            view: 'home',
             init() {
                 serverManager.init().then(() => {
-                    this.loadTrends('News'); // Стартуем с новостей
+                    this.loadTrends('News');
                 });
-
                 document.getElementById('searchInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.search(e.target.value);
                 });
             },
-
             nav(target) {
                 this.view = target;
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
                 
-                if (target === 'settings') {
-                    this.toggleSettings();
-                    return; 
-                }
+                if (target === 'settings') { this.toggleSettings(); return; }
 
                 document.getElementById(`nav${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active');
                 
                 if (target === 'home') {
                     document.getElementById('homeTabs').classList.remove('hidden');
-                    // Если грид пуст, грузим тренды
                     if(document.getElementById('grid').children.length === 0) this.loadTrends('News');
                 } else if (target === 'subs') {
                     document.getElementById('homeTabs').classList.add('hidden');
                     this.loadSubsFeed();
                 }
             },
-
             async search(query) {
                 if (!query.trim()) return;
                 ui.loader(true);
                 ui.clearGrid();
-                
                 try {
                     const url = `${serverManager.current}/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`;
                     const res = await fetch(url);
+                    if(!res.ok) throw new Error('Net Error');
                     const data = await res.json();
                     ui.render(data);
                 } catch (e) {
-                    ui.error("Ошибка поиска. Попробуйте сменить сервер.");
-                } finally {
-                    ui.loader(false);
-                }
+                    ui.error("Ошибка сети. Попробуйте сменить сервер в настройках.");
+                    app.toggleSettings();
+                } finally { ui.loader(false); }
             },
-
             async loadTrends(category) {
                 ui.loader(true);
                 ui.clearGrid();
                 ui.status(`Загрузка: ${category}...`, "blue");
-                
-                // Invidious не имеет жестких категорий API "News", но мы можем искать по тегам или trending
-                // Для надежности используем обычный поиск с фильтром по дате, это дает "свежее"
                 try {
                     const q = category === 'News' ? 'Новости' : category === 'Politics' ? 'Политика' : 'Образование лекции';
                     const url = `${serverManager.current}/api/v1/search?q=${encodeURIComponent(q)}&sort_by=upload_date&type=video`;
                     const res = await fetch(url);
+                    if(!res.ok) throw new Error('Net Error');
                     const data = await res.json();
                     ui.render(data);
                     ui.hideStatus();
                 } catch(e) {
-                    ui.error("Не удалось загрузить ленту.");
-                } finally {
-                    ui.loader(false);
-                }
+                    ui.error("Ошибка загрузки. Проверьте сервер.");
+                } finally { ui.loader(false); }
             },
-            
             async loadSubsFeed() {
                 ui.clearGrid();
                 if (subs.data.length === 0) {
                     ui.showEmpty("У вас нет подписок. Добавляйте каналы в Избранное.");
                     return;
                 }
-                
                 ui.loader(true);
-                // Это сложная часть. Invidious API не позволяет получить "фид" из списка ID без аккаунта.
-                // Мы сделаем "эмуляцию": возьмем последние 3 канала, в которые заходили, и найдем их последние видео.
-                // Для полноценного фида нужно делать много запросов, сделаем упрощенно: покажем список каналов.
-                
                 const grid = document.getElementById('grid');
                 subs.data.reverse().forEach(sub => {
                     const card = document.createElement('div');
                     card.className = "bg-[#1e1e1e] p-4 rounded-lg flex items-center justify-between animate-fade-enter";
-                    card.innerHTML = `
-                        <div class="font-bold text-lg">${sub.name}</div>
-                        <button onclick="app.search('author:${sub.name}')" class="bg-gray-700 px-3 py-1 rounded text-sm">
-                            Видео
-                        </button>
-                    `;
+                    card.innerHTML = `<div class="font-bold text-lg">${sub.name}</div><button onclick="app.search('author:${sub.name}')" class="bg-gray-700 px-3 py-1 rounded text-sm">Видео</button>`;
                     grid.appendChild(card);
                 });
                 ui.loader(false);
             },
-
-            toggleSettings() {
-                const m = document.getElementById('settingsModal');
-                m.classList.toggle('hidden');
-            },
-            
-            clearData() {
-                if(confirm('Удалить все подписки и историю?')) {
-                    localStorage.clear();
-                    location.reload();
-                }
-            }
+            toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); },
+            clearData() { if(confirm('Удалить данные?')) { localStorage.clear(); location.reload(); } }
         };
 
-        // --- 5. UI Helpers ---
         const ui = {
             grid: document.getElementById('grid'),
-            
             render(items) {
-                if (!items || items.length === 0) {
-                    this.showEmpty("Ничего не найдено");
-                    return;
-                }
-                
+                if (!items || items.length === 0) { this.showEmpty("Ничего не найдено"); return; }
                 items.forEach((item, idx) => {
                     if (item.type !== 'video') return;
-                    
                     const el = document.createElement('div');
                     el.className = "bg-[#1e1e1e] rounded-lg overflow-hidden cursor-pointer shadow-lg fade-enter";
                     el.style.animationDelay = `${idx * 0.05}s`;
                     el.onclick = () => player.open(item);
-
-                    // Image fallback proxy logic is handled by server, usually items have full URLs
                     const img = item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url;
-
                     el.innerHTML = `
                         <div class="relative aspect-video bg-black">
                             <img src="${img}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition" loading="lazy">
-                            <div class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1 rounded">
-                                ${this.fmtTime(item.lengthSeconds)}
-                            </div>
+                            <div class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1 rounded">${this.fmtTime(item.lengthSeconds)}</div>
                         </div>
                         <div class="p-3">
                             <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1">${item.title}</h3>
@@ -475,20 +419,14 @@
                                 <span>${item.author}</span>
                                 <span>${this.fmtViews(item.viewCount)}</span>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                     this.grid.appendChild(el);
                 });
             },
-
             clearGrid() { this.grid.innerHTML = ''; document.getElementById('emptyState').classList.add('hidden'); },
             loader(state) { document.getElementById('pageLoader').classList.toggle('hidden', !state); },
-            showEmpty(msg) { 
-                document.getElementById('emptyText').textContent = msg; 
-                document.getElementById('emptyState').classList.remove('hidden'); 
-            },
+            showEmpty(msg) { document.getElementById('emptyText').textContent = msg; document.getElementById('emptyState').classList.remove('hidden'); },
             error(msg) { this.status(msg, 'red'); },
-            
             status(msg, color) {
                 const p = document.getElementById('statusPanel');
                 const t = document.getElementById('statusText');
@@ -502,7 +440,6 @@
                 document.getElementById('currentServer').textContent = url.replace('https://', ''); 
                 document.getElementById('setServerInput').value = url;
             },
-            
             fmtTime(s) {
                 if(!s) return "LIVE";
                 const m = Math.floor(s/60); const sec = s%60;
@@ -514,7 +451,6 @@
             }
         };
 
-        // Start
         app.init();
     </script>
 </body>
