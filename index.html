@@ -51,7 +51,7 @@
     <div id="bootScreen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md">
             <h1 class="text-3xl font-bold text-white mb-2 tracking-widest text-center">FREE<span class="text-[#00ff88]">VIEW</span></h1>
-            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM INITIALIZATION v3.3 (Deep Scan)</div>
+            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM INITIALIZATION v3.4 (Hotfix)</div>
             
             <div class="relative bg-[#111] border border-[#333] h-64 rounded-lg p-3 overflow-hidden mb-4">
                 <div class="scan-line"></div>
@@ -224,20 +224,14 @@
 
     <!-- Logic -->
     <script>
-        // --- 1. PROXY POOL (Massive List) ---
+        // --- 1. PROXY POOL (Optimized based on logs) ---
         const PROXY_POOL = [
+            'https://api.piped.projectsegfau.lt', // ! WORKING in logs
             'https://pipedapi.kavin.rocks',
-            'https://api.piped.privacy.com.de',
-            'https://pipedapi.leptons.xyz',
-            'https://pipedapi.adminforge.de',
-            'https://pipedapi-libre.kavin.rocks',
             'https://pipedapi.drgns.space',
             'https://pa.il.ax',
-            'https://piped-api.lunar.icu',
-            'https://api.piped.projectsegfau.lt',
-            'https://pipedapi.r4fo.com',
+            'https://api.piped.privacy.com.de',
             'https://pipedapi.smnz.de',
-            'https://api.piped.mha.fi',
             'https://pipedapi.ducks.party',
             'https://pipedapi.aeong.one'
         ];
@@ -265,7 +259,7 @@
             },
 
             async run() {
-                this.log("Initializing Proxy Auto-Pilot v3.3...", "process");
+                this.log("Initializing Proxy Auto-Pilot v3.4...", "process");
                 this.log("Scanning nodes for optimal route...", "process");
                 
                 let checked = 0;
@@ -289,9 +283,24 @@
                     if (!success) {
                         try {
                             const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 3000);
+                            const timeoutId = setTimeout(() => controller.abort(), 4000); // Increased timeout for proxies
                             // Пробуем через CorsProxy
                             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url + '/trending?region=RU')}`;
+                            const res = await fetch(proxyUrl, { signal: controller.signal });
+                            clearTimeout(timeoutId);
+                            if (res.ok) {
+                                success = true;
+                                isProxy = true;
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    // 3. Last Resort: AllOrigins (slower but sometimes works when corsproxy is blocked)
+                    if (!success) {
+                         try {
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 5000); 
+                            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url + '/trending?region=RU')}`;
                             const res = await fetch(proxyUrl, { signal: controller.signal });
                             clearTimeout(timeoutId);
                             if (res.ok) {
@@ -323,14 +332,14 @@
                     this.countEl.textContent = `Targets: ${checked}/${PROXY_POOL.length}`;
                 };
 
-                // Запускаем проверки батчами
-                const batchSize = 5;
+                // Запускаем проверки последовательно для надежности или батчами
+                const batchSize = 3; // Reduced batch size to prevent browser blocking
                 for (let i = 0; i < PROXY_POOL.length; i += batchSize) {
                     const batch = PROXY_POOL.slice(i, i + batchSize);
                     await Promise.all(batch.map(url => checkNode(url)));
                     
                     // Если нашли сервер с хорошим пингом (прямой или прокси), останавливаемся
-                    if (this.workingNode && bestPing < 800) {
+                    if (this.workingNode) {
                         this.log("Optimal route found. Engaging...", "success");
                         break;
                     }
@@ -340,9 +349,8 @@
                     this.log(`--- CONNECTION ESTABLISHED ---`, "success");
                     setTimeout(() => this.finish(this.workingNode), 800);
                 } else {
-                    this.log("CRITICAL: ALL NODES FAILED. RETRYING...", "error");
-                    // Можно попробовать рестарт или фоллбэк на дефолт
-                    setTimeout(() => this.finish(PROXY_POOL[0]), 2000);
+                    this.log("CRITICAL: ALL NODES FAILED.", "error");
+                    this.log("Retry or check network.", "error");
                 }
             },
 
@@ -604,57 +612,6 @@
             
             toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); },
             clearData() { if(confirm('Сбросить?')) { localStorage.clear(); location.reload(); } }
-        };
-
-        const ui = {
-            grid: document.getElementById('grid'),
-            render(items) {
-                if (!items || items.length === 0) { this.showEmpty("Пусто"); return; }
-                items.forEach((item, idx) => {
-                    if (item.type !== 'stream' && item.type !== 'video') return;
-                    
-                    const el = document.createElement('div');
-                    el.className = "video-card bg-[#121212] rounded overflow-hidden cursor-pointer fade-enter border border-[#222] hover:border-[#444] transition-colors";
-                    el.style.animationDelay = `${idx * 0.05}s`;
-                    el.onclick = () => player.open(item);
-                    
-                    const elImg = document.createElement('img');
-                    elImg.className = "w-full h-full object-cover opacity-80 hover:opacity-100 transition";
-                    elImg.loading = "lazy";
-                    elImg.src = item.thumbnail; 
-                    elImg.onerror = function() { this.src = 'https://via.placeholder.com/320x180?text=No+Preview'; };
-
-                    el.innerHTML = `
-                        <div class="relative aspect-video bg-black">
-                            <div class="absolute bottom-2 right-2 bg-black/80 text-[#00ff88] text-[10px] px-1 rounded font-mono border border-[#00ff88]/30">${this.fmtTime(item.duration)}</div>
-                        </div>
-                        <div class="p-3">
-                            <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1 text-gray-200">${item.title}</h3>
-                            <div class="flex justify-between items-center text-[10px] text-gray-500 font-mono mt-2">
-                                <span>${item.uploaderName}</span>
-                                <span>${this.fmtViews(item.views)}</span>
-                            </div>
-                        </div>`;
-                    
-                    el.querySelector('.aspect-video').prepend(elImg);
-                    this.grid.appendChild(el);
-                });
-            },
-            clearGrid() { this.grid.innerHTML = ''; document.getElementById('emptyState').classList.add('hidden'); },
-            loader(state) { document.getElementById('pageLoader').classList.toggle('hidden', !state); },
-            showEmpty(msg) { document.getElementById('emptyText').textContent = msg; document.getElementById('emptyState').classList.remove('hidden'); },
-            error(msg) { 
-                this.grid.innerHTML = `<div class="col-span-full text-center py-10 text-red-400 font-mono text-xs border border-red-900/30 bg-red-900/10 rounded">${msg}</div>`;
-            },
-            fmtTime(s) {
-                if(!s) return "0:00";
-                const m = Math.floor(s/60); const sec = s%60;
-                return `${m}:${sec.toString().padStart(2,'0')}`;
-            },
-            fmtViews(v) {
-                if(!v) return "";
-                return new Intl.NumberFormat('ru', { notation: "compact" }).format(v);
-            }
         };
 
         window.onload = () => {
