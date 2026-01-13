@@ -144,16 +144,20 @@
             <h3 class="text-xl font-bold mb-4">Настройки</h3>
             
             <div class="mb-4">
-                <label class="text-xs text-gray-400 uppercase font-bold">API Сервер (Piped)</label>
+                <label class="text-xs text-gray-400 uppercase font-bold">API Сервер</label>
                 <div class="flex gap-2 mt-2">
                     <input id="setServerInput" type="text" class="w-full bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-300">
                     <button onclick="serverManager.manualSet()" class="bg-blue-600 text-white px-3 rounded text-sm">OK</button>
                 </div>
+                <div class="mt-2 flex items-center gap-2">
+                    <input type="checkbox" id="useProxyCheck" onchange="serverManager.toggleProxy(this.checked)" class="w-4 h-4">
+                    <label for="useProxyCheck" class="text-xs text-gray-300">Использовать CORS Proxy (если не грузит)</label>
+                </div>
                 <div class="mt-2 text-[10px] text-gray-500">
                     Рекомендуемые:
-                    <br>- https://pipedapi.kavin.rocks (Главный)
-                    <br>- https://api.piped.privacy.com.de (ЕС)
-                    <br>- https://pipedapi.drgns.space (РФ-френдли)
+                    <br>- https://pipedapi.kavin.rocks
+                    <br>- https://pipedapi.leptons.xyz
+                    <br>- https://pipedapi.adminforge.de
                 </div>
             </div>
 
@@ -167,49 +171,90 @@
         </div>
     </div>
 
-    <!-- Logic (Piped API Version) -->
+    <!-- Logic (Piped API Version + CORS Resilience) -->
     <script>
         const serverManager = {
-            // Список инстансов Piped, которые обычно разрешают CORS
+            // Список надежных Piped инстансов (от Grok)
             list: [
                 'https://pipedapi.kavin.rocks',
+                'https://pipedapi.leptons.xyz',
+                'https://pipedapi.adminforge.de',
+                'https://pipedapi-libre.kavin.rocks',
                 'https://api.piped.privacy.com.de',
-                'https://pipedapi.drgns.space',
-                'https://api.piped.projectsegfau.lt',
-                'https://pa.il.ax'
+                'https://pipedapi.drgns.space'
             ],
             current: 'https://pipedapi.kavin.rocks',
+            useProxy: localStorage.getItem('fv_use_proxy') === 'true',
 
             async init() {
+                // UI состояние чекбокса
+                const checkbox = document.getElementById('useProxyCheck');
+                if(checkbox) checkbox.checked = this.useProxy;
+
                 const cached = localStorage.getItem('fv_server_piped');
                 if (cached) {
                     this.current = cached;
                     ui.updateServer(cached);
                 } else {
-                    // Пробуем найти рабочий
                     await this.findBest();
                 }
             },
 
+            // Умный fetch: пытается напрямую, если ошибка -> пробует через прокси
+            async fetch(endpoint) {
+                const targetUrl = `${this.current}${endpoint}`;
+                
+                // 1. Попытка прямого запроса
+                if (!this.useProxy) {
+                    try {
+                        const res = await fetch(targetUrl, { 
+                            credentials: 'omit' // Важно для CORS!
+                        });
+                        if (res.ok) return await res.json();
+                        throw new Error('Direct fetch failed');
+                    } catch (e) {
+                        console.warn('Direct fetch failed, trying proxy...', e);
+                        // Если прямой не прошел, автоматически пробуем прокси один раз
+                    }
+                }
+
+                // 2. Fallback через прокси
+                // Используем corsproxy.io как надежный вариант для JSON
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                try {
+                    const res = await fetch(proxyUrl);
+                    if (res.ok) return await res.json();
+                    
+                    // Запасной прокси (allorigins)
+                    const proxyUrl2 = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+                    const res2 = await fetch(proxyUrl2);
+                    if (res2.ok) {
+                        const data = await res2.json();
+                        return JSON.parse(data.contents); // allorigins заворачивает ответ в contents
+                    }
+                } catch (e) {
+                    throw new Error('All fetch methods failed');
+                }
+            },
+
             async check(url) {
-                // Piped check: просто пингуем корень или /streams/trending
                 const c = new AbortController();
                 setTimeout(() => c.abort(), 4000);
-                // Запрашиваем тренды, это легкий запрос для проверки CORS
-                const r = await fetch(`${url}/trending?region=RU`, { signal: c.signal });
+                // Простой запрос к trending
+                const r = await fetch(`${url}/trending?region=RU`, { signal: c.signal, credentials: 'omit' });
                 if(!r.ok) throw new Error('API Error');
                 return url;
             },
 
             async findBest() {
-                ui.status("Поиск рабочего API...", "blue");
+                ui.status("Поиск сервера...", "blue");
                 try {
                     const winner = await Promise.any(this.list.map(url => this.check(url)));
                     this.set(winner);
                     ui.status("Подключено: " + winner.split('//')[1], "green");
                     setTimeout(() => ui.hideStatus(), 2000);
                 } catch (e) {
-                    ui.status("Ошибка соединения с API. Попробуйте вручную.", "red");
+                    ui.status("Прямое соединение не удалось. Включите Прокси в настройках.", "red");
                     app.toggleSettings();
                 }
             },
@@ -225,6 +270,11 @@
                 }
             },
 
+            toggleProxy(val) {
+                this.useProxy = val;
+                localStorage.setItem('fv_use_proxy', val);
+            },
+
             set(url) {
                 this.current = url;
                 localStorage.setItem('fv_server_piped', url);
@@ -236,9 +286,8 @@
             data: JSON.parse(localStorage.getItem('fv_subs') || '[]'),
             toggle() {
                 if (!player.currentVideo) return;
-                // Piped возвращает uploader вместо author
                 const author = player.currentVideo.uploaderName || player.currentVideo.author;
-                const url = player.currentVideo.uploaderUrl; // /channel/ID
+                const url = player.currentVideo.uploaderUrl; 
                 
                 const idx = this.data.findIndex(s => s.name === author);
                 const btn = document.getElementById('subBtn');
@@ -265,7 +314,6 @@
                 this.currentVideo = videoData;
                 document.getElementById('playerOverlay').classList.remove('hidden');
                 
-                // Нормализация данных (Piped иногда дает разные поля)
                 const title = videoData.title;
                 const author = videoData.uploaderName || videoData.author;
                 const views = this.fmtViews(videoData.views);
@@ -280,7 +328,7 @@
                 subBtn.textContent = isSub ? "Подписан" : "Подписаться";
                 subBtn.className = isSub ? 'bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold transition' : 'bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-full text-xs font-bold transition';
 
-                this.loadSource(videoData.url); // url = /watch?v=ID
+                this.loadSource(videoData.url); 
             },
             
             loadSource(videoUrl) {
@@ -288,12 +336,9 @@
                 const loader = document.getElementById('playerLoader');
                 loader.classList.remove('hidden');
                 
-                // Извлекаем ID
-                // Piped URL: /watch?v=VIDEO_ID
                 const id = videoUrl.split('v=')[1];
                 
-                // Используем Piped Embed (он часто на другом домене, например piped.video)
-                // Это позволяет обойти CORS для самого видео потока
+                // Используем надежный Embed URL от Piped
                 frame.src = `https://piped.video/embed/${id}?autoplay=1`;
                 
                 frame.onload = () => loader.classList.add('hidden');
@@ -302,8 +347,8 @@
 
             async fetchDetails(id) {
                 try {
-                    const res = await fetch(`${serverManager.current}/streams/${id}`);
-                    const data = await res.json();
+                    // Используем наш умный fetcher (он сам выберет прокси если надо)
+                    const data = await serverManager.fetch(`/streams/${id}`);
                     document.getElementById('plDesc').textContent = data.description || "Нет описания";
                 } catch(e) {}
             },
@@ -355,15 +400,11 @@
                 ui.loader(true);
                 ui.clearGrid();
                 try {
-                    // Piped Search API
-                    const url = `${serverManager.current}/search?q=${encodeURIComponent(query)}&filter=videos`;
-                    const res = await fetch(url);
-                    if(!res.ok) throw new Error('API Error');
-                    const data = await res.json();
-                    // Piped возвращает { items: [...] }
+                    // Используем serverManager.fetch для автоматического проксирования
+                    const data = await serverManager.fetch(`/search?q=${encodeURIComponent(query)}&filter=videos`);
                     ui.render(data.items);
                 } catch (e) {
-                    ui.error("Ошибка поиска. Попробуйте сменить сервер.");
+                    ui.error("Ошибка поиска. Попробуйте включить 'Proxy' в настройках.");
                     app.toggleSettings();
                 } finally { ui.loader(false); }
             },
@@ -373,17 +414,12 @@
                 ui.clearGrid();
                 ui.status(`Загрузка: ${category}...`, "blue");
                 
-                // Эмуляция категорий через поиск, т.к. в Piped тренды по странам, а не темам
                 let q = 'Новости';
                 if(category === 'Tech') q = 'Технологии обзор';
                 if(category === 'Music') q = 'Музыка клипы';
                 
                 try {
-                    // Piped Search
-                    const url = `${serverManager.current}/search?q=${encodeURIComponent(q)}&filter=videos`;
-                    const res = await fetch(url);
-                    if(!res.ok) throw new Error('API Error');
-                    const data = await res.json();
+                    const data = await serverManager.fetch(`/search?q=${encodeURIComponent(q)}&filter=videos`);
                     ui.render(data.items);
                     ui.hideStatus();
                 } catch(e) {
@@ -415,7 +451,6 @@
             render(items) {
                 if (!items || items.length === 0) { this.showEmpty("Пусто"); return; }
                 items.forEach((item, idx) => {
-                    // В Piped типы могут быть 'stream', 'channel', 'playlist'
                     if (item.type !== 'stream' && item.type !== 'video') return;
                     
                     const el = document.createElement('div');
@@ -426,9 +461,10 @@
                     const elImg = document.createElement('img');
                     elImg.className = "w-full h-full object-cover opacity-90";
                     elImg.loading = "lazy";
-                    elImg.src = item.thumbnail; // Piped проксирует картинки, обычно CORS ок
                     
-                    // Fallback для картинок
+                    // Пробуем загрузить картинку. Если CORS блокирует, браузер покажет placeholder
+                    // Piped картинки обычно лежат на proxy, который тоже может требовать CORS
+                    elImg.src = item.thumbnail; 
                     elImg.onerror = function() { this.src = 'https://via.placeholder.com/320x180?text=No+Image'; };
 
                     el.innerHTML = `
