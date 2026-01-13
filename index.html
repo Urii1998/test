@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FreeView | Immortal Edition</title>
+    <title>FreeView | Hive Mind v5.0</title>
     
     <!-- PWA Manifest info -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,6 +29,7 @@
         .log-error { color: #ff3333; }
         .log-process { color: #ffff00; }
         .log-warn { color: #ffaa00; }
+        .log-info { color: #00bfff; }
 
         .scan-line {
             width: 100%; height: 2px; background: var(--primary);
@@ -47,7 +48,7 @@
     <div id="bootScreen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md">
             <h1 class="text-3xl font-bold text-white mb-2 tracking-widest text-center">FREE<span class="text-[#00ff88]">VIEW</span></h1>
-            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM V4.0 (IMMORTAL)</div>
+            <div class="text-xs text-gray-500 text-center mb-8">HIVE MIND PROTOCOL v5.0</div>
             
             <div class="relative bg-[#0a0a0a] border border-[#333] h-64 rounded-lg p-3 overflow-hidden mb-4">
                 <div class="scan-line"></div>
@@ -60,7 +61,7 @@
             </div>
             
             <button onclick="autoPilot.skip()" class="mt-6 text-xs text-gray-600 hover:text-white underline w-full text-center">
-                Экстренный запуск (Пропустить)
+                Экстренный запуск (Offline Mode)
             </button>
         </div>
     </div>
@@ -189,14 +190,14 @@
                     <div class="w-3 h-3 rounded-full bg-[#00ff88]" id="proxyStatusDot"></div>
                     <div class="text-xs text-gray-300">
                         <div>Mode: <span id="proxyStatusText" class="text-white font-bold">AUTO</span></div>
-                        <div class="text-[10px] text-gray-500 mt-1">Multi-layer Proxy Rotation Active</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Hive Mind Discovery Active</div>
                     </div>
                 </div>
             </div>
             
             <div class="space-y-2">
                 <button onclick="autoPilot.restart()" class="w-full bg-[#222] hover:bg-[#333] text-white py-2 text-xs border border-[#444] rounded">
-                    > RE-SCAN NETWORK
+                    > RE-SCAN GLOBAL NETWORK
                 </button>
                 <button onclick="app.clearData()" class="w-full bg-[#222] hover:bg-red-900/50 text-red-400 py-2 text-xs border border-red-900/50 rounded">
                     > FLUSH DATA
@@ -209,22 +210,18 @@
 
     <!-- Core Logic -->
     <script>
-        // --- 1. TARGET POOL (Mixed Piped & Invidious) ---
-        // Смешанный список серверов: Piped (обычный API) и Invidious (для фоллбэка)
-        // Эти серверы "Low-Profile" и обычно не блокируют запросы.
-        const TARGETS = [
-            { url: 'https://api.piped.projectsegfau.lt', type: 'piped' }, // Strongest
+        // --- 1. TARGET POOL (Seed Nodes) ---
+        // Изначальный список, если реестр недоступен
+        const SEED_TARGETS = [
+            { url: 'https://api.piped.projectsegfau.lt', type: 'piped' },
             { url: 'https://pipedapi.tokhmi.xyz', type: 'piped' },
-            { url: 'https://pipedapi.ezero.space', type: 'piped' },
-            { url: 'https://pipedapi-libre.kavin.rocks', type: 'piped' },
-            { url: 'https://inv.nadeko.net/api/v1', type: 'invidious' }, // Fallback
-            { url: 'https://yewtu.be/api/v1', type: 'invidious' },
-            { url: 'https://invidious.nerdvpn.de/api/v1', type: 'invidious' },
-            { url: 'https://invidious.f5.si/api/v1', type: 'invidious' }
+            { url: 'https://inv.nadeko.net/api/v1', type: 'invidious' },
+            { url: 'https://yewtu.be/api/v1', type: 'invidious' }
         ];
 
+        let LIVE_TARGETS = [...SEED_TARGETS];
+
         // --- 2. PROXY ROTATOR ---
-        // Список прокси для обхода CORS. Если corsproxy.io не работает, пробуем cors.sh и др.
         const PROXIES = [
             (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
             (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
@@ -250,8 +247,38 @@
                 this.logEl.prepend(div);
             },
 
+            async fetchGlobalRegistry() {
+                this.log("Connecting to Global Hive Mind...", "info");
+                try {
+                    // Используем надежный прокси для получения списка серверов
+                    const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.invidious.io/instances.json?sort_by=type,health'));
+                    const data = await r.json();
+                    
+                    // Фильтруем: только HTTPS, CORS разрешен, API доступен
+                    const newNodes = data
+                        .filter(i => i[1].type === 'https' && i[1].cors === true && i[1].api === true)
+                        .map(i => ({ url: i[0], type: 'invidious' })) // Invidious реестр дает invidious ноды
+                        .slice(0, 6); // Берем топ-6 лучших
+                    
+                    if(newNodes.length > 0) {
+                        this.log(`Registry: Found ${newNodes.length} verified nodes.`, "success");
+                        // Добавляем новые ноды в начало списка проверки
+                        LIVE_TARGETS = [...newNodes, ...SEED_TARGETS];
+                    } else {
+                        throw new Error('No valid nodes');
+                    }
+                } catch(e) {
+                    this.log("Registry offline. Using embedded seeds.", "warn");
+                }
+            },
+
             async run() {
-                this.log("Initializing Immortal System v4.0...", "process");
+                this.log("Initializing System v5.0...", "process");
+                
+                // 1. Попытка скачать свежий список серверов
+                await this.fetchGlobalRegistry();
+
+                this.log(`Scanning ${LIVE_TARGETS.length} targets...`, "process");
                 
                 let bestPing = 9999;
                 let checked = 0;
@@ -278,7 +305,7 @@
                         for (let proxyFn of PROXIES) {
                             try {
                                 const c = new AbortController();
-                                setTimeout(() => c.abort(), 3500); // Чуть больше времени для прокси
+                                setTimeout(() => c.abort(), 3500); 
                                 const pUrl = proxyFn(fullUrl);
                                 const r = await fetch(pUrl, { signal: c.signal });
                                 if(r.ok) { working = true; isProxy = true; break; }
@@ -291,7 +318,7 @@
                     if (working) {
                         const style = isProxy ? 'warn' : 'success';
                         const label = isProxy ? 'ONLINE (PROXY)' : 'ONLINE (DIRECT)';
-                        this.log(`[${target.url.split('//')[1]}] ${label} ${ping}ms`, style);
+                        this.log(`[${target.url.replace('https://','').split('/')[0]}] ${label} ${ping}ms`, style);
                         
                         if (ping < bestPing) {
                             bestPing = ping;
@@ -303,19 +330,19 @@
                             this.bestPingEl.style.color = '#00ff88';
                         }
                     } else {
-                        this.log(`[${target.url.split('//')[1]}] FAILED`, 'error');
+                        this.log(`[${target.url.replace('https://','').split('/')[0]}] FAILED`, 'error');
                     }
                     
                     checked++;
-                    this.countEl.textContent = `Scanned: ${checked}/${TARGETS.length}`;
+                    this.countEl.textContent = `Scanned: ${checked}/${LIVE_TARGETS.length}`;
                 };
 
-                // Сканируем батчами по 3, чтобы не вешать браузер
+                // Сканируем батчами
                 const batchSize = 3;
-                for(let i=0; i<TARGETS.length; i+=batchSize) {
-                    await Promise.all(TARGETS.slice(i, i+batchSize).map(check));
+                for(let i=0; i<LIVE_TARGETS.length; i+=batchSize) {
+                    await Promise.all(LIVE_TARGETS.slice(i, i+batchSize).map(check));
                     // Если нашли хороший (<1s), выходим
-                    if(this.node && bestPing < 1000) break;
+                    if(this.node && bestPing < 1200) break;
                 }
 
                 if(this.node) {
@@ -323,9 +350,9 @@
                     this.finish();
                 } else {
                     this.log("ALL NODES FAILED. RETRYING...", "error");
-                    // Экстренный фоллбэк на первый в списке + прокси
-                    this.node = TARGETS[0].url;
-                    this.type = TARGETS[0].type;
+                    // Экстренный фоллбэк
+                    this.node = SEED_TARGETS[0].url;
+                    this.type = SEED_TARGETS[0].type;
                     this.mode = 'proxy';
                     setTimeout(() => this.finish(), 2000);
                 }
@@ -345,9 +372,8 @@
             },
 
             skip() {
-                // Manual override
-                this.node = TARGETS[0].url;
-                this.type = TARGETS[0].type;
+                this.node = SEED_TARGETS[0].url;
+                this.type = SEED_TARGETS[0].type;
                 this.mode = 'proxy';
                 this.finish();
             }
@@ -382,10 +408,7 @@
             },
 
             async get(endpoint) {
-                // Адаптация URL под тип API
-                // Invidious и Piped имеют схожие эндпоинты, но Invidious требует /api/v1 префикс (он уже в baseUrl для Invidious)
-                // Для поиска: Piped: /search?q=x&filter=videos | Invidious: /search?q=x&type=video
-                
+                // Адаптация URL
                 let path = endpoint;
                 if(this.type === 'invidious' && endpoint.includes('filter=videos')) {
                     path = endpoint.replace('filter=videos', 'type=video');
@@ -393,7 +416,6 @@
 
                 const target = `${this.baseUrl}${path}`;
 
-                // 1. Прямой запрос
                 if (this.mode === 'direct') {
                     try {
                         const r = await fetch(target, { credentials: 'omit' });
@@ -401,7 +423,6 @@
                     } catch(e) {}
                 }
 
-                // 2. Ротация прокси (если direct не прошел или mode=proxy)
                 for (let proxyFn of PROXIES) {
                     try {
                         const r = await fetch(proxyFn(target));
@@ -410,7 +431,7 @@
                             try { return JSON.parse(txt); } 
                             catch(e) { 
                                 const j = JSON.parse(txt);
-                                return JSON.parse(j.contents); // AllOrigins fix
+                                return JSON.parse(j.contents); 
                             }
                         }
                     } catch(e) {}
@@ -452,7 +473,6 @@
             open(item) {
                 document.getElementById('playerOverlay').classList.remove('hidden');
                 
-                // Нормализация полей
                 const title = item.title;
                 const author = item.uploaderName || item.author;
                 const views = this.fmt(item.views || item.viewCount);
@@ -463,12 +483,10 @@
                 document.getElementById('plViews').textContent = views;
                 document.getElementById('plDesc').textContent = "Загрузка...";
                 
-                // Embed URL (Invidious и Piped используют разные)
-                // Но мы можем использовать Piped Embed глобально, он надежнее
-                // Или Invidious Embed, если сервер Invidious
+                // Embed URL
                 let embedUrl = `https://piped.video/embed/${id}?autoplay=1`;
                 if(net.type === 'invidious') {
-                   // Для Invidious используем надежный инстанс для embed, т.к. API инстанс может не иметь фронта
+                   // Для Invidious используем надежный инстанс для embed
                    embedUrl = `https://yewtu.be/embed/${id}?autoplay=1`; 
                 }
 
@@ -477,18 +495,15 @@
                 document.getElementById('playerLoader').classList.remove('hidden');
                 frame.onload = () => document.getElementById('playerLoader').classList.add('hidden');
 
-                // Кнопка подписки
                 subs.updateBtn(author);
                 document.getElementById('subBtn').onclick = () => subs.toggle(item);
 
-                // Детали
                 this.loadDetails(id);
                 this.currentId = id;
             },
             
             async loadDetails(id) {
                 try {
-                    // Piped: /streams/ID, Invidious: /videos/ID
                     const path = net.type === 'piped' ? `/streams/${id}` : `/videos/${id}`;
                     const data = await net.get(path);
                     document.getElementById('plDesc').textContent = data.description || "Нет описания";
@@ -541,7 +556,6 @@
                 this.loading(true);
                 try {
                     const data = await net.get(`/search?q=${encodeURIComponent(q)}&filter=videos`);
-                    // Invidious возвращает массив сразу, Piped { items: [] }
                     const items = Array.isArray(data) ? data : data.items;
                     this.render(items);
                 } catch(e) { this.error(); }
@@ -555,7 +569,6 @@
                 if(cat === 'Music') q = 'Music';
                 
                 try {
-                    // Используем поиск вместо трендов для стабильности
                     const data = await net.get(`/search?q=${encodeURIComponent(q)}&filter=videos`);
                     const items = Array.isArray(data) ? data : data.items;
                     this.render(items);
@@ -594,12 +607,10 @@
                     el.style.animationDelay = `${i * 0.05}s`;
                     el.onclick = () => player.open(item);
                     
-                    // Картинки: Piped дает полные URL, Invidious - относительные
                     let img = item.thumbnail || item.videoThumbnails?.[0]?.url;
                     if(img && !img.startsWith('http')) img = net.baseUrl + img;
                     if(!img) img = 'https://via.placeholder.com/320x180?text=No+Img';
 
-                    // Длительность
                     const dur = item.duration ? player.fmt(item.duration) : (item.lengthSeconds ? player.fmt(item.lengthSeconds) : '');
 
                     el.innerHTML = `
