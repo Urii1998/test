@@ -3,32 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FreeView | Auto-Pilot</title>
+    <title>FreeView | Immortal Edition</title>
     
     <!-- PWA Manifest info -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0f0f0f">
+    <meta name="theme-color" content="#000000">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root { --bg: #050505; --surface: #121212; --primary: #00ff88; --danger: #ff3333; --text: #e0e0e0; }
+        :root { --bg: #000000; --surface: #0f0f0f; --primary: #00ff88; --danger: #ff3333; --text: #e0e0e0; }
         body { background-color: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; -webkit-tap-highlight-color: transparent; }
         
-        /* Стили скроллбара */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         .fade-enter { animation: fadeEnter 0.4s ease-out forwards; opacity: 0; transform: translateY(10px); }
         @keyframes fadeEnter { to { opacity: 1; transform: translateY(0); } }
 
-        /* Терминальный стиль для логов */
         .terminal-log { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.4; }
         .log-success { color: #00ff88; }
-        .log-error { color: #555; }
+        .log-error { color: #ff3333; }
         .log-process { color: #ffff00; }
         .log-warn { color: #ffaa00; }
 
@@ -39,21 +37,19 @@
         }
         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
 
-        .nav-item.active { color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.5); }
-        
-        /* Карточка видео */
+        .nav-item.active { color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.3); }
         .video-card { font-family: -apple-system, sans-serif; }
     </style>
 </head>
 <body class="flex flex-col h-screen overflow-hidden">
 
-    <!-- Экран Авто-пилота (Загрузка) -->
+    <!-- Экран Авто-пилота -->
     <div id="bootScreen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md">
             <h1 class="text-3xl font-bold text-white mb-2 tracking-widest text-center">FREE<span class="text-[#00ff88]">VIEW</span></h1>
-            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM INITIALIZATION v3.4 (Hotfix)</div>
+            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM V4.0 (IMMORTAL)</div>
             
-            <div class="relative bg-[#111] border border-[#333] h-64 rounded-lg p-3 overflow-hidden mb-4">
+            <div class="relative bg-[#0a0a0a] border border-[#333] h-64 rounded-lg p-3 overflow-hidden mb-4">
                 <div class="scan-line"></div>
                 <div id="bootLog" class="terminal-log h-full overflow-y-auto flex flex-col-reverse"></div>
             </div>
@@ -63,23 +59,22 @@
                 <span id="bestPing">Best: --ms</span>
             </div>
             
-            <!-- Кнопка отмены, если зависнет -->
             <button onclick="autoPilot.skip()" class="mt-6 text-xs text-gray-600 hover:text-white underline w-full text-center">
-                Пропустить сканирование (Использовать последний)
+                Экстренный запуск (Пропустить)
             </button>
         </div>
     </div>
 
-    <!-- Верхняя шапка -->
-    <header class="bg-[#121212] border-b border-[#222] z-20 shrink-0 font-sans">
+    <!-- Шапка -->
+    <header class="bg-[#0f0f0f] border-b border-[#222] z-20 shrink-0 font-sans">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 cursor-pointer" onclick="app.nav('home')">
-                <i class="fas fa-satellite-dish text-[#00ff88] text-xl"></i>
+                <i class="fas fa-shield-cat text-[#00ff88] text-xl"></i>
                 <span class="font-bold text-lg hidden sm:block tracking-wide">FreeView</span>
             </div>
 
             <div class="flex-1 relative max-w-lg">
-                <input type="text" id="searchInput" placeholder="Поиск видео..." 
+                <input type="text" id="searchInput" placeholder="Поиск..." 
                     class="w-full bg-black border border-[#333] text-white pl-10 pr-4 py-2 rounded-full focus:border-[#00ff88] focus:outline-none text-sm font-sans transition-colors">
                 <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-500"></i>
             </div>
@@ -90,7 +85,7 @@
         </div>
     </header>
 
-    <!-- Основная область контента -->
+    <!-- Контент -->
     <main id="mainContainer" class="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#050505] pb-20 no-scrollbar font-sans">
         
         <!-- Плеер -->
@@ -99,7 +94,7 @@
                 <button onclick="player.minimize()" class="text-white p-2 hover:text-[#00ff88]"><i class="fas fa-chevron-down"></i></button>
                 <div class="flex gap-4">
                     <button onclick="autoPilot.restart()" class="text-xs bg-red-900/30 text-red-400 px-3 py-1 rounded border border-red-900 hover:bg-red-900/50">
-                        <i class="fas fa-sync-alt mr-1"></i> Сменить поток
+                        <i class="fas fa-sync-alt mr-1"></i> Fix Stream
                     </button>
                     <button onclick="player.openInNew()" class="text-xs bg-gray-800 text-gray-300 px-3 py-1 rounded border border-gray-600">
                         <i class="fas fa-external-link-alt"></i>
@@ -108,14 +103,13 @@
             </div>
             
             <div class="mt-12 w-full bg-black aspect-video relative flex items-center justify-center">
-                <!-- Removed unsupported features from allow list -->
                 <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media"></iframe>
                 <div id="playerLoader" class="absolute inset-0 flex items-center justify-center bg-black hidden">
-                    <div class="spinner border-t-[#00ff88]"></div>
+                    <div class="spinner border-t-[#00ff88] w-8 h-8 rounded-full border-4 animate-spin"></div>
                 </div>
             </div>
 
-            <div class="p-4 overflow-y-auto bg-[#121212] flex-1">
+            <div class="p-4 overflow-y-auto bg-[#0f0f0f] flex-1">
                 <h2 id="plTitle" class="text-lg font-bold leading-snug mb-2 text-white"></h2>
                 <div class="flex justify-between items-start border-b border-[#333] pb-4 mb-4">
                     <div>
@@ -130,10 +124,9 @@
             </div>
         </div>
 
-        <!-- Контент -->
+        <!-- Сетка видео -->
         <div class="max-w-4xl mx-auto p-4 min-h-full">
             
-            <!-- Статус соединения -->
             <div id="connectionStatus" class="hidden mb-4 px-3 py-2 bg-[#0a0a0a] border border-[#00ff88]/30 rounded flex items-center justify-between text-xs font-mono">
                 <div class="flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
@@ -142,12 +135,11 @@
                 <span id="serverLabel" class="text-gray-500">UNKNOWN</span>
             </div>
 
-            <!-- Табы -->
             <div id="homeTabs" class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
-                <button onclick="app.loadTrends('News')" class="whitespace-nowrap bg-[#121212] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">📰 Новости</button>
-                <button onclick="app.loadTrends('Tech')" class="whitespace-nowrap bg-[#121212] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">💻 Tech</button>
-                <button onclick="app.loadTrends('Music')" class="whitespace-nowrap bg-[#121212] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">🎵 Music</button>
-                <button onclick="app.loadHistory()" class="whitespace-nowrap bg-[#121212] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">🕒 История</button>
+                <button onclick="app.loadTrends('News')" class="whitespace-nowrap bg-[#0f0f0f] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">📰 Новости</button>
+                <button onclick="app.loadTrends('Tech')" class="whitespace-nowrap bg-[#0f0f0f] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">💻 Tech</button>
+                <button onclick="app.loadTrends('Music')" class="whitespace-nowrap bg-[#0f0f0f] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">🎵 Music</button>
+                <button onclick="app.loadHistory()" class="whitespace-nowrap bg-[#0f0f0f] border border-[#333] px-4 py-1.5 rounded-full text-sm text-gray-300 hover:border-[#00ff88] hover:text-[#00ff88] transition">🕒 История</button>
             </div>
 
             <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-20"></div>
@@ -159,13 +151,13 @@
             <div id="emptyState" class="hidden text-center mt-20 text-gray-600">
                 <i class="fas fa-ghost text-4xl mb-3"></i>
                 <p id="emptyText">No Data</p>
-                <button onclick="autoPilot.restart()" class="mt-4 text-xs text-[#00ff88] underline">Перезапустить сканер прокси</button>
+                <button onclick="autoPilot.restart()" class="mt-4 text-xs text-[#00ff88] underline">Перезапустить сканер</button>
             </div>
         </div>
     </main>
 
     <!-- Навигация -->
-    <nav class="fixed bottom-0 w-full bg-[#121212] border-t border-[#222] pb-safe z-40 font-sans">
+    <nav class="fixed bottom-0 w-full bg-[#0f0f0f] border-t border-[#222] pb-safe z-40 font-sans">
         <div class="flex justify-around items-center h-14 max-w-4xl mx-auto">
             <button onclick="app.nav('home')" class="nav-item active flex flex-col items-center gap-1 text-gray-500 w-full" id="navHome">
                 <i class="fas fa-home text-lg"></i>
@@ -184,339 +176,321 @@
 
     <!-- Настройки -->
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
-        <div class="bg-[#121212] w-full max-w-sm rounded border border-[#333] p-5 font-mono">
-            <h3 class="text-xl font-bold mb-4 text-[#00ff88]">> SETTINGS</h3>
+        <div class="bg-[#0f0f0f] w-full max-w-sm rounded border border-[#333] p-5 font-mono">
+            <h3 class="text-xl font-bold mb-4 text-[#00ff88]">> SYSTEM CONFIG</h3>
             
             <div class="mb-4">
-                <label class="text-xs text-gray-500 uppercase">Current Uplink</label>
-                <div class="flex gap-2 mt-1">
-                    <input id="setServerInput" type="text" class="w-full bg-black border border-[#333] text-[#00ff88] px-2 py-1 text-xs font-mono" readonly>
-                </div>
+                <label class="text-xs text-gray-500 uppercase">Current Node</label>
+                <input id="setServerInput" type="text" class="w-full bg-black border border-[#333] text-[#00ff88] px-2 py-1 text-xs font-mono mt-1" readonly>
             </div>
 
             <div class="mb-4 p-3 bg-black border border-[#333] rounded">
                 <div class="flex items-center gap-3">
                     <div class="w-3 h-3 rounded-full bg-[#00ff88]" id="proxyStatusDot"></div>
                     <div class="text-xs text-gray-300">
-                        <div>Proxy Status: <span id="proxyStatusText" class="text-white font-bold">ACTIVE</span></div>
-                        <div class="text-[10px] text-gray-500 mt-1">Routing via generic fetch/cors</div>
+                        <div>Mode: <span id="proxyStatusText" class="text-white font-bold">AUTO</span></div>
+                        <div class="text-[10px] text-gray-500 mt-1">Multi-layer Proxy Rotation Active</div>
                     </div>
                 </div>
             </div>
             
-            <div class="mb-4 flex items-center gap-2">
-                 <input type="checkbox" id="forceProxyCheck" onchange="serverManager.toggleProxy(this.checked)" class="w-4 h-4 bg-black border-[#333]">
-                 <label for="forceProxyCheck" class="text-xs text-gray-400">Force CORS Proxy Mode</label>
-            </div>
-
             <div class="space-y-2">
                 <button onclick="autoPilot.restart()" class="w-full bg-[#222] hover:bg-[#333] text-white py-2 text-xs border border-[#444] rounded">
-                    > RE-SCAN NETWORK NODES
+                    > RE-SCAN NETWORK
                 </button>
                 <button onclick="app.clearData()" class="w-full bg-[#222] hover:bg-red-900/50 text-red-400 py-2 text-xs border border-red-900/50 rounded">
-                    > FLUSH LOCAL STORAGE
+                    > FLUSH DATA
                 </button>
             </div>
 
-            <button onclick="app.toggleSettings()" class="w-full mt-6 bg-[#00ff88] text-black font-bold py-2 rounded text-xs hover:bg-[#00cc6a]">CLOSE CONSOLE</button>
+            <button onclick="app.toggleSettings()" class="w-full mt-6 bg-[#00ff88] text-black font-bold py-2 rounded text-xs hover:bg-[#00cc6a]">CLOSE</button>
         </div>
     </div>
 
-    <!-- Logic -->
+    <!-- Core Logic -->
     <script>
-        // --- 1. PROXY POOL (Optimized based on logs) ---
-        const PROXY_POOL = [
-            'https://api.piped.projectsegfau.lt', // ! WORKING in logs
-            'https://pipedapi.kavin.rocks',
-            'https://pipedapi.drgns.space',
-            'https://pa.il.ax',
-            'https://api.piped.privacy.com.de',
-            'https://pipedapi.smnz.de',
-            'https://pipedapi.ducks.party',
-            'https://pipedapi.aeong.one'
+        // --- 1. TARGET POOL (Mixed Piped & Invidious) ---
+        // Смешанный список серверов: Piped (обычный API) и Invidious (для фоллбэка)
+        // Эти серверы "Low-Profile" и обычно не блокируют запросы.
+        const TARGETS = [
+            { url: 'https://api.piped.projectsegfau.lt', type: 'piped' }, // Strongest
+            { url: 'https://pipedapi.tokhmi.xyz', type: 'piped' },
+            { url: 'https://pipedapi.ezero.space', type: 'piped' },
+            { url: 'https://pipedapi-libre.kavin.rocks', type: 'piped' },
+            { url: 'https://inv.nadeko.net/api/v1', type: 'invidious' }, // Fallback
+            { url: 'https://yewtu.be/api/v1', type: 'invidious' },
+            { url: 'https://invidious.nerdvpn.de/api/v1', type: 'invidious' },
+            { url: 'https://invidious.f5.si/api/v1', type: 'invidious' }
         ];
 
-        const CORS_PROXIES = [
-            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+        // --- 2. PROXY ROTATOR ---
+        // Список прокси для обхода CORS. Если corsproxy.io не работает, пробуем cors.sh и др.
+        const PROXIES = [
+            (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+            (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+            (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+            (u) => `https://thingproxy.freeboard.io/fetch/${u}`
         ];
 
-        // --- 2. AUTO-PILOT SYSTEM ---
+        // --- 3. AUTO-PILOT SYSTEM ---
         const autoPilot = {
             logEl: document.getElementById('bootLog'),
             countEl: document.getElementById('testedCount'),
             bestPingEl: document.getElementById('bestPing'),
             bootScreen: document.getElementById('bootScreen'),
             
-            workingNode: null,
-            workingNodeMode: false, // false = direct, true = proxy
-            
-            log(msg, type = 'process') {
-                const line = document.createElement('div');
-                line.className = `log-${type}`;
-                line.innerHTML = `> ${msg}`;
-                this.logEl.prepend(line);
+            node: null,
+            mode: 'direct', // direct, proxy
+            type: 'piped',  // piped, invidious
+
+            log(msg, style = 'process') {
+                const div = document.createElement('div');
+                div.className = `log-${style}`;
+                div.innerText = `> ${msg}`;
+                this.logEl.prepend(div);
             },
 
             async run() {
-                this.log("Initializing Proxy Auto-Pilot v3.4...", "process");
-                this.log("Scanning nodes for optimal route...", "process");
+                this.log("Initializing Immortal System v4.0...", "process");
                 
-                let checked = 0;
                 let bestPing = 9999;
-                
-                const checkNode = async (url) => {
-                    const start = Date.now();
+                let checked = 0;
+
+                const check = async (target) => {
+                    const tStart = Date.now();
+                    let working = false;
                     let isProxy = false;
-                    let success = false;
-
-                    // 1. Direct Check
-                    try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 2000); 
-                        const res = await fetch(`${url}/trending?region=RU`, { signal: controller.signal, credentials: 'omit' });
-                        clearTimeout(timeoutId);
-                        if (res.ok) success = true;
-                    } catch (e) {}
-
-                    // 2. Proxy Check (если прямой не прошел)
-                    if (!success) {
-                        try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 4000); // Increased timeout for proxies
-                            // Пробуем через CorsProxy
-                            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url + '/trending?region=RU')}`;
-                            const res = await fetch(proxyUrl, { signal: controller.signal });
-                            clearTimeout(timeoutId);
-                            if (res.ok) {
-                                success = true;
-                                isProxy = true;
-                            }
-                        } catch (e) {}
-                    }
                     
-                    // 3. Last Resort: AllOrigins (slower but sometimes works when corsproxy is blocked)
-                    if (!success) {
-                         try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 5000); 
-                            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url + '/trending?region=RU')}`;
-                            const res = await fetch(proxyUrl, { signal: controller.signal });
-                            clearTimeout(timeoutId);
-                            if (res.ok) {
-                                success = true;
-                                isProxy = true;
-                            }
-                        } catch (e) {}
+                    // Endpoint для теста
+                    const testPath = target.type === 'piped' ? '/trending?region=RU' : '/trending?region=RU';
+                    const fullUrl = target.url + testPath;
+
+                    // 1. Direct Fetch
+                    try {
+                        const c = new AbortController();
+                        setTimeout(() => c.abort(), 2000);
+                        const r = await fetch(fullUrl, { signal: c.signal, credentials: 'omit' });
+                        if(r.ok) { working = true; }
+                    } catch(e) {}
+
+                    // 2. Proxy Fetch (если Direct упал)
+                    if (!working) {
+                        for (let proxyFn of PROXIES) {
+                            try {
+                                const c = new AbortController();
+                                setTimeout(() => c.abort(), 3500); // Чуть больше времени для прокси
+                                const pUrl = proxyFn(fullUrl);
+                                const r = await fetch(pUrl, { signal: c.signal });
+                                if(r.ok) { working = true; isProxy = true; break; }
+                            } catch(e) {}
+                        }
                     }
 
-                    const ping = Date.now() - start;
+                    const ping = Date.now() - tStart;
 
-                    if (success) {
-                        const status = isProxy ? "ONLINE (PROXY)" : "ONLINE (DIRECT)";
-                        const color = isProxy ? "log-warn" : "log-success";
-                        this.log(`Node [${url.split('//')[1]}] ${status} (${ping}ms)`, isProxy ? "warn" : "success");
+                    if (working) {
+                        const style = isProxy ? 'warn' : 'success';
+                        const label = isProxy ? 'ONLINE (PROXY)' : 'ONLINE (DIRECT)';
+                        this.log(`[${target.url.split('//')[1]}] ${label} ${ping}ms`, style);
                         
                         if (ping < bestPing) {
                             bestPing = ping;
-                            this.workingNode = url;
-                            this.workingNodeMode = isProxy; // Запоминаем режим
+                            this.node = target.url;
+                            this.type = target.type;
+                            this.mode = isProxy ? 'proxy' : 'direct';
+                            
                             this.bestPingEl.textContent = `Best: ${ping}ms`;
                             this.bestPingEl.style.color = '#00ff88';
                         }
                     } else {
-                        this.log(`Node [${url.split('//')[1]}] UNREACHABLE`, "error");
+                        this.log(`[${target.url.split('//')[1]}] FAILED`, 'error');
                     }
                     
                     checked++;
-                    this.countEl.textContent = `Targets: ${checked}/${PROXY_POOL.length}`;
+                    this.countEl.textContent = `Scanned: ${checked}/${TARGETS.length}`;
                 };
 
-                // Запускаем проверки последовательно для надежности или батчами
-                const batchSize = 3; // Reduced batch size to prevent browser blocking
-                for (let i = 0; i < PROXY_POOL.length; i += batchSize) {
-                    const batch = PROXY_POOL.slice(i, i + batchSize);
-                    await Promise.all(batch.map(url => checkNode(url)));
-                    
-                    // Если нашли сервер с хорошим пингом (прямой или прокси), останавливаемся
-                    if (this.workingNode) {
-                        this.log("Optimal route found. Engaging...", "success");
-                        break;
-                    }
+                // Сканируем батчами по 3, чтобы не вешать браузер
+                const batchSize = 3;
+                for(let i=0; i<TARGETS.length; i+=batchSize) {
+                    await Promise.all(TARGETS.slice(i, i+batchSize).map(check));
+                    // Если нашли хороший (<1s), выходим
+                    if(this.node && bestPing < 1000) break;
                 }
 
-                if (this.workingNode) {
-                    this.log(`--- CONNECTION ESTABLISHED ---`, "success");
-                    setTimeout(() => this.finish(this.workingNode), 800);
+                if(this.node) {
+                    this.log("OPTIMAL ROUTE LOCKED.", "success");
+                    this.finish();
                 } else {
-                    this.log("CRITICAL: ALL NODES FAILED.", "error");
-                    this.log("Retry or check network.", "error");
+                    this.log("ALL NODES FAILED. RETRYING...", "error");
+                    // Экстренный фоллбэк на первый в списке + прокси
+                    this.node = TARGETS[0].url;
+                    this.type = TARGETS[0].type;
+                    this.mode = 'proxy';
+                    setTimeout(() => this.finish(), 2000);
                 }
             },
 
-            finish(url) {
-                serverManager.set(url);
-                
-                // Применяем режим (Прокси или Прямой), который определил автопилот
-                if (this.workingNodeMode !== undefined) {
-                    serverManager.toggleProxy(this.workingNodeMode);
-                }
-                
+            finish() {
+                net.config(this.node, this.mode, this.type);
                 this.bootScreen.classList.add('hidden');
-                app.init(); 
+                app.init();
             },
 
             restart() {
                 this.bootScreen.classList.remove('hidden');
                 this.logEl.innerHTML = '';
-                this.workingNode = null;
+                this.node = null;
                 this.run();
             },
-            
+
             skip() {
-                this.finish(serverManager.current || PROXY_POOL[0]);
+                // Manual override
+                this.node = TARGETS[0].url;
+                this.type = TARGETS[0].type;
+                this.mode = 'proxy';
+                this.finish();
             }
         };
 
-        // --- 3. SERVER & DATA MANAGERS ---
-        const serverManager = {
-            current: null,
-            useProxy: false,
+        // --- 4. NETWORKING CORE ---
+        const net = {
+            baseUrl: null,
+            mode: 'direct', // direct, proxy
+            type: 'piped',  // piped, invidious
 
-            set(url) {
-                this.current = url;
-                localStorage.setItem('fv_server_active', url);
+            config(url, mode, type) {
+                this.baseUrl = url;
+                this.mode = mode;
+                this.type = type;
                 
-                // UI updates
-                document.getElementById('serverLabel').textContent = url.replace('https://', '');
+                // UI
                 document.getElementById('setServerInput').value = url;
+                document.getElementById('connStatusText').textContent = `CONNECTED (${mode.toUpperCase()})`;
+                document.getElementById('serverLabel').textContent = type.toUpperCase();
                 document.getElementById('connectionStatus').classList.remove('hidden');
-            },
-            
-            toggleProxy(val) {
-                this.useProxy = val;
-                localStorage.setItem('fv_use_proxy', val);
                 
-                // Обновляем UI
-                const chk = document.getElementById('forceProxyCheck');
-                if(chk) chk.checked = val;
-                
-                const statusDot = document.getElementById('proxyStatusDot');
-                const statusText = document.getElementById('proxyStatusText');
-                const connText = document.getElementById('connStatusText');
-                
-                if(val) {
-                    if(statusDot) statusDot.className = "w-3 h-3 rounded-full bg-yellow-500";
-                    if(statusText) statusText.innerText = "ACTIVE (PROXY)";
-                    if(connText) connText.innerText = "CONNECTED (VIA PROXY)";
+                const dot = document.getElementById('proxyStatusDot');
+                const txt = document.getElementById('proxyStatusText');
+                if(mode === 'proxy') {
+                    dot.className = "w-3 h-3 rounded-full bg-yellow-500";
+                    txt.textContent = "PROXY RELAY";
                 } else {
-                    if(statusDot) statusDot.className = "w-3 h-3 rounded-full bg-[#00ff88]";
-                    if(statusText) statusText.innerText = "INACTIVE (DIRECT)";
-                    if(connText) connText.innerText = "CONNECTED (DIRECT)";
+                    dot.className = "w-3 h-3 rounded-full bg-[#00ff88]";
+                    txt.textContent = "DIRECT";
                 }
             },
 
-            async fetch(endpoint) {
-                const target = `${this.current}${endpoint}`;
+            async get(endpoint) {
+                // Адаптация URL под тип API
+                // Invidious и Piped имеют схожие эндпоинты, но Invidious требует /api/v1 префикс (он уже в baseUrl для Invidious)
+                // Для поиска: Piped: /search?q=x&filter=videos | Invidious: /search?q=x&type=video
                 
-                // 1. Прямой запрос (только если прокси выключен)
-                if (!this.useProxy) {
-                    try {
-                        const res = await fetch(target, { credentials: 'omit' });
-                        if (res.ok) return await res.json();
-                    } catch (e) {} 
+                let path = endpoint;
+                if(this.type === 'invidious' && endpoint.includes('filter=videos')) {
+                    path = endpoint.replace('filter=videos', 'type=video');
                 }
 
-                // 2. Fallback: CORS Proxy Rotation
-                for (let proxyFn of CORS_PROXIES) {
+                const target = `${this.baseUrl}${path}`;
+
+                // 1. Прямой запрос
+                if (this.mode === 'direct') {
                     try {
-                        const pUrl = proxyFn(target);
-                        const res = await fetch(pUrl);
-                        if (res.ok) {
-                            const text = await res.text();
-                            try { return JSON.parse(text); } catch(e) { 
-                                const json = JSON.parse(text);
-                                return JSON.parse(json.contents);
+                        const r = await fetch(target, { credentials: 'omit' });
+                        if(r.ok) return await r.json();
+                    } catch(e) {}
+                }
+
+                // 2. Ротация прокси (если direct не прошел или mode=proxy)
+                for (let proxyFn of PROXIES) {
+                    try {
+                        const r = await fetch(proxyFn(target));
+                        if(r.ok) {
+                            const txt = await r.text();
+                            try { return JSON.parse(txt); } 
+                            catch(e) { 
+                                const j = JSON.parse(txt);
+                                return JSON.parse(j.contents); // AllOrigins fix
                             }
                         }
-                    } catch (e) { continue; }
+                    } catch(e) {}
                 }
-                
-                throw new Error("All uplinks failed");
+                throw new Error('Network Dead');
             }
         };
 
+        // --- 5. APP LOGIC ---
         const subs = {
             data: JSON.parse(localStorage.getItem('fv_subs') || '[]'),
-            toggle() {
-                if (!player.currentVideo) return;
-                const author = player.currentVideo.uploaderName || player.currentVideo.author;
-                const url = player.currentVideo.uploaderUrl; 
+            toggle(video) {
+                const author = video.uploaderName || video.author;
                 const idx = this.data.findIndex(s => s.name === author);
-                const btn = document.getElementById('subBtn');
-
                 if (idx === -1) {
-                    this.data.push({ name: author, url: url, added: Date.now() });
-                    btn.classList.replace('bg-[#333]', 'bg-[#00ff88]');
-                    btn.classList.replace('text-white', 'text-black');
-                    btn.textContent = "Подписан";
+                    this.data.push({ name: author, added: Date.now() });
                 } else {
                     this.data.splice(idx, 1);
-                    btn.classList.replace('bg-[#00ff88]', 'bg-[#333]');
-                    btn.classList.replace('text-black', 'text-white');
-                    btn.textContent = "Подписаться";
                 }
                 localStorage.setItem('fv_subs', JSON.stringify(this.data));
+                this.updateBtn(author);
             },
-            isSubbed(name) { return this.data.some(s => s.name === name); }
+            isSubbed(name) { return this.data.some(s => s.name === name); },
+            updateBtn(name) {
+                const btn = document.getElementById('subBtn');
+                if(this.isSubbed(name)) {
+                    btn.textContent = "Подписан";
+                    btn.classList.replace('bg-[#333]', 'bg-[#00ff88]');
+                    btn.classList.replace('text-white', 'text-black');
+                } else {
+                    btn.textContent = "Подписаться";
+                    btn.classList.replace('bg-[#00ff88]', 'bg-[#333]');
+                    btn.classList.replace('text-black', 'text-white');
+                }
+            }
         };
 
         const player = {
-            currentVideo: null,
-            open(videoData) {
-                this.currentVideo = videoData;
+            open(item) {
                 document.getElementById('playerOverlay').classList.remove('hidden');
                 
-                const title = videoData.title;
-                const author = videoData.uploaderName || videoData.author;
-                const views = this.fmtViews(videoData.views);
-                
+                // Нормализация полей
+                const title = item.title;
+                const author = item.uploaderName || item.author;
+                const views = this.fmt(item.views || item.viewCount);
+                const id = item.url ? item.url.split('v=')[1] : item.videoId;
+
                 document.getElementById('plTitle').textContent = title;
                 document.getElementById('plAuthor').textContent = author;
                 document.getElementById('plViews').textContent = views;
                 document.getElementById('plDesc').textContent = "Загрузка...";
                 
-                const subBtn = document.getElementById('subBtn');
-                const isSub = subs.isSubbed(author);
-                
-                if (isSub) {
-                    subBtn.classList.replace('bg-[#333]', 'bg-[#00ff88]');
-                    subBtn.classList.replace('text-white', 'text-black');
-                    subBtn.textContent = "Подписан";
-                } else {
-                    subBtn.classList.replace('bg-[#00ff88]', 'bg-[#333]');
-                    subBtn.classList.replace('text-black', 'text-white');
-                    subBtn.textContent = "Подписаться";
+                // Embed URL (Invidious и Piped используют разные)
+                // Но мы можем использовать Piped Embed глобально, он надежнее
+                // Или Invidious Embed, если сервер Invidious
+                let embedUrl = `https://piped.video/embed/${id}?autoplay=1`;
+                if(net.type === 'invidious') {
+                   // Для Invidious используем надежный инстанс для embed, т.к. API инстанс может не иметь фронта
+                   embedUrl = `https://yewtu.be/embed/${id}?autoplay=1`; 
                 }
 
-                this.loadSource(videoData.url); 
+                const frame = document.getElementById('videoFrame');
+                frame.src = embedUrl;
+                document.getElementById('playerLoader').classList.remove('hidden');
+                frame.onload = () => document.getElementById('playerLoader').classList.add('hidden');
+
+                // Кнопка подписки
+                subs.updateBtn(author);
+                document.getElementById('subBtn').onclick = () => subs.toggle(item);
+
+                // Детали
+                this.loadDetails(id);
+                this.currentId = id;
             },
             
-            loadSource(videoUrl) {
-                const frame = document.getElementById('videoFrame');
-                const loader = document.getElementById('playerLoader');
-                loader.classList.remove('hidden');
-                
-                const id = videoUrl.split('v=')[1];
-                frame.src = `https://piped.video/embed/${id}?autoplay=1`;
-                
-                frame.onload = () => loader.classList.add('hidden');
-                this.fetchDetails(id);
-            },
-
-            async fetchDetails(id) {
+            async loadDetails(id) {
                 try {
-                    const data = await serverManager.fetch(`/streams/${id}`);
+                    // Piped: /streams/ID, Invidious: /videos/ID
+                    const path = net.type === 'piped' ? `/streams/${id}` : `/videos/${id}`;
+                    const data = await net.get(path);
                     document.getElementById('plDesc').textContent = data.description || "Нет описания";
                 } catch(e) {}
             },
@@ -527,96 +501,137 @@
             },
             
             openInNew() {
-                const id = this.currentVideo.url.split('v=')[1];
-                window.open(`https://piped.video/watch?v=${id}`, '_blank');
+                window.open(`https://piped.video/watch?v=${this.currentId}`, '_blank');
             },
-            
-            fmtViews(v) {
-                if(!v) return "";
-                return new Intl.NumberFormat('ru', { notation: "compact" }).format(v);
+
+            fmt(n) {
+                if(!n) return "";
+                return new Intl.NumberFormat('ru', { notation: "compact" }).format(n);
             }
         };
 
         const app = {
-            view: 'home',
             init() {
                 this.loadTrends('News');
-                
                 document.getElementById('searchInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.search(e.target.value);
                 });
-
-                // Init UI state
-                const chk = document.getElementById('forceProxyCheck');
-                if(chk) chk.checked = serverManager.useProxy;
-                serverManager.toggleProxy(serverManager.useProxy);
             },
+
             nav(target) {
-                this.view = target;
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
                 if (target === 'settings') { this.toggleSettings(); return; }
                 
                 document.getElementById(`nav${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active');
                 
+                const tabs = document.getElementById('homeTabs');
+                const grid = document.getElementById('grid');
+                
                 if (target === 'home') {
-                    document.getElementById('homeTabs').classList.remove('hidden');
-                    if(document.getElementById('grid').children.length === 0) this.loadTrends('News');
+                    tabs.classList.remove('hidden');
+                    if(grid.children.length === 0) this.loadTrends('News');
                 } else if (target === 'subs') {
-                    document.getElementById('homeTabs').classList.add('hidden');
-                    this.loadSubsFeed();
+                    tabs.classList.add('hidden');
+                    this.loadSubs();
                 }
-            },
-            
-            async search(query) {
-                if (!query.trim()) return;
-                ui.loader(true);
-                ui.clearGrid();
-                try {
-                    const data = await serverManager.fetch(`/search?q=${encodeURIComponent(query)}&filter=videos`);
-                    ui.render(data.items);
-                } catch (e) {
-                    ui.error("Ошибка связи. Попробуйте перезапустить сканер (Настройки -> Re-Scan).");
-                } finally { ui.loader(false); }
-            },
-            
-            async loadTrends(category) {
-                ui.loader(true);
-                ui.clearGrid();
-                
-                let q = 'Новости';
-                if(category === 'Tech') q = 'Technology Review';
-                if(category === 'Music') q = 'Music Video 2025';
-                
-                try {
-                    const data = await serverManager.fetch(`/search?q=${encodeURIComponent(q)}&filter=videos`);
-                    ui.render(data.items);
-                } catch(e) {
-                    ui.error("Нет соединения с API. Проверьте настройки.");
-                } finally { ui.loader(false); }
             },
 
-            async loadSubsFeed() {
-                ui.clearGrid();
-                if (subs.data.length === 0) {
-                    ui.showEmpty("Нет подписок");
+            async search(q) {
+                if(!q.trim()) return;
+                this.loading(true);
+                try {
+                    const data = await net.get(`/search?q=${encodeURIComponent(q)}&filter=videos`);
+                    // Invidious возвращает массив сразу, Piped { items: [] }
+                    const items = Array.isArray(data) ? data : data.items;
+                    this.render(items);
+                } catch(e) { this.error(); }
+                this.loading(false);
+            },
+
+            async loadTrends(cat) {
+                this.loading(true);
+                let q = 'Новости';
+                if(cat === 'Tech') q = 'Technology';
+                if(cat === 'Music') q = 'Music';
+                
+                try {
+                    // Используем поиск вместо трендов для стабильности
+                    const data = await net.get(`/search?q=${encodeURIComponent(q)}&filter=videos`);
+                    const items = Array.isArray(data) ? data : data.items;
+                    this.render(items);
+                } catch(e) { this.error(); }
+                this.loading(false);
+            },
+
+            async loadSubs() {
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+                if(subs.data.length === 0) {
+                    document.getElementById('emptyState').classList.remove('hidden');
                     return;
                 }
-                const grid = document.getElementById('grid');
-                [...subs.data].reverse().forEach(sub => {
-                    const card = document.createElement('div');
-                    card.className = "bg-[#121212] p-4 rounded flex items-center justify-between border border-[#333]";
-                    card.innerHTML = `<div class="font-bold text-gray-300 text-sm">${sub.name}</div><button onclick="app.search('${sub.name}')" class="bg-[#222] hover:bg-[#333] px-3 py-1 rounded text-xs border border-[#444] text-[#00ff88]">Открыть</button>`;
-                    grid.appendChild(card);
+                
+                [...subs.data].reverse().forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = "bg-[#0f0f0f] p-4 rounded border border-[#333] flex justify-between items-center";
+                    div.innerHTML = `<span class="font-bold">${s.name}</span><button onclick="app.search('${s.name}')" class="text-xs bg-[#222] px-3 py-1 rounded text-[#00ff88]">Видео</button>`;
+                    grid.appendChild(div);
                 });
+            },
+
+            render(items) {
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+                document.getElementById('emptyState').classList.add('hidden');
+                
+                if(!items || items.length === 0) return;
+
+                items.forEach((item, i) => {
+                    if(item.type !== 'video' && item.type !== 'stream') return;
+                    
+                    const el = document.createElement('div');
+                    el.className = "video-card bg-[#0f0f0f] rounded overflow-hidden cursor-pointer fade-enter border border-[#222] hover:border-[#444]";
+                    el.style.animationDelay = `${i * 0.05}s`;
+                    el.onclick = () => player.open(item);
+                    
+                    // Картинки: Piped дает полные URL, Invidious - относительные
+                    let img = item.thumbnail || item.videoThumbnails?.[0]?.url;
+                    if(img && !img.startsWith('http')) img = net.baseUrl + img;
+                    if(!img) img = 'https://via.placeholder.com/320x180?text=No+Img';
+
+                    // Длительность
+                    const dur = item.duration ? player.fmt(item.duration) : (item.lengthSeconds ? player.fmt(item.lengthSeconds) : '');
+
+                    el.innerHTML = `
+                        <div class="relative aspect-video bg-black">
+                            <img src="${img}" class="w-full h-full object-cover opacity-80 hover:opacity-100 transition" loading="lazy" onerror="this.src='https://via.placeholder.com/320x180?text=Err'">
+                            <div class="absolute bottom-2 right-2 bg-black/80 text-[#00ff88] text-[10px] px-1 rounded font-mono border border-[#00ff88]/30">${dur}</div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1 text-gray-200">${item.title}</h3>
+                            <div class="flex justify-between items-center text-[10px] text-gray-500 font-mono mt-2">
+                                <span>${item.uploaderName || item.author}</span>
+                                <span>${player.fmt(item.views || item.viewCount)}</span>
+                            </div>
+                        </div>`;
+                    grid.appendChild(el);
+                });
+            },
+
+            loading(state) {
+                document.getElementById('pageLoader').classList.toggle('hidden', !state);
+                document.getElementById('grid').innerHTML = state ? '' : document.getElementById('grid').innerHTML;
+            },
+            
+            error() {
+                document.getElementById('grid').innerHTML = `<div class="col-span-full text-center py-10 text-red-500 font-mono">CONNECTION LOST. TRY RESTARTING SYSTEM.</div>`;
             },
             
             toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); },
-            clearData() { if(confirm('Сбросить?')) { localStorage.clear(); location.reload(); } }
+            clearData() { if(confirm('RESET?')) { localStorage.clear(); location.reload(); } }
         };
 
-        window.onload = () => {
-            autoPilot.run();
-        };
+        window.onload = () => autoPilot.run();
     </script>
 </body>
 </html>
