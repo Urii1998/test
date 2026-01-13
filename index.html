@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FreeView | Свободный Доступ</title>
+    <title>FreeView | Piped Edition</title>
     
     <!-- PWA Manifest info -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f0f0f">
     
-    <!-- Tailwind CSS (CDN версия для быстрого запуска без сборки) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -37,12 +37,12 @@
     <header class="bg-[#1e1e1e] border-b border-gray-800 z-20 shrink-0">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 cursor-pointer" onclick="app.nav('home')">
-                <i class="fas fa-satellite-dish text-red-500 text-xl"></i>
+                <i class="fas fa-shield-cat text-red-500 text-xl"></i>
                 <span class="font-bold text-lg hidden sm:block">FreeView</span>
             </div>
 
             <div class="flex-1 relative max-w-lg">
-                <input type="text" id="searchInput" placeholder="Поиск..." 
+                <input type="text" id="searchInput" placeholder="Поиск (Piped API)..." 
                     class="w-full bg-[#121212] border border-gray-700 text-white pl-10 pr-4 py-2 rounded-full focus:border-red-500 focus:outline-none text-sm">
                 <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-500"></i>
             </div>
@@ -61,14 +61,13 @@
             <div class="flex items-center justify-between p-3 bg-black/80 backdrop-blur absolute top-0 w-full z-10">
                 <button onclick="player.minimize()" class="text-white p-2"><i class="fas fa-chevron-down"></i> Свернуть</button>
                 <div class="flex gap-4">
-                    <button onclick="player.switchServer()" class="text-xs bg-red-900/50 text-red-200 px-3 py-1 rounded border border-red-800 flex items-center gap-1">
-                        <i class="fas fa-random"></i> Сменить сервер
+                    <button onclick="player.openInNew()" class="text-xs bg-gray-800 text-gray-300 px-3 py-1 rounded border border-gray-600">
+                        <i class="fas fa-external-link-alt"></i> Открыть
                     </button>
                 </div>
             </div>
             
             <div class="mt-12 w-full bg-black aspect-video relative flex items-center justify-center">
-                <!-- Обновленные права доступа (allow) для уменьшения ошибок консоли -->
                 <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
                 <div id="playerLoader" class="absolute inset-0 flex items-center justify-center bg-black hidden">
                     <div class="spinner"></div>
@@ -95,15 +94,15 @@
             
             <!-- Инфо-панель -->
             <div id="statusPanel" class="hidden mb-4 p-3 bg-blue-900/20 border border-blue-800 rounded-lg flex items-center justify-between text-xs">
-                <span id="statusText" class="text-blue-200">Подключение к сети...</span>
+                <span id="statusText" class="text-blue-200">Подключение к Piped...</span>
                 <span id="currentServer" class="font-mono text-gray-400">...</span>
             </div>
 
             <!-- Табы -->
             <div id="homeTabs" class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
                 <button onclick="app.loadTrends('News')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">📰 Новости</button>
-                <button onclick="app.loadTrends('Politics')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">⚖️ Политика</button>
-                <button onclick="app.loadTrends('Education')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">🎓 Образование</button>
+                <button onclick="app.loadTrends('Tech')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">💻 Технологии</button>
+                <button onclick="app.loadTrends('Music')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">🎵 Музыка</button>
                 <button onclick="app.loadHistory()" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">🕒 История</button>
             </div>
 
@@ -116,7 +115,7 @@
             <div id="emptyState" class="hidden text-center mt-20 text-gray-500">
                 <i class="far fa-compass text-4xl mb-3"></i>
                 <p id="emptyText">Здесь пока пусто</p>
-                <button onclick="app.toggleSettings()" class="mt-4 text-xs text-blue-400 underline">Настроить сервер вручную</button>
+                <button onclick="app.toggleSettings()" class="mt-4 text-xs text-blue-400 underline">Сменить сервер API</button>
             </div>
         </div>
     </main>
@@ -139,31 +138,28 @@
         </div>
     </nav>
 
-    <!-- Настройки (Модальное окно) -->
+    <!-- Настройки -->
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
         <div class="bg-[#1e1e1e] w-full max-w-sm rounded-xl border border-gray-700 p-5">
             <h3 class="text-xl font-bold mb-4">Настройки</h3>
             
             <div class="mb-4">
-                <label class="text-xs text-gray-400 uppercase font-bold">Сервер (Зеркало)</label>
-                <p class="text-[10px] text-gray-500 mb-2">Если автопоиск не работает, введите адрес вручную (например: https://invidious.fdn.fr)</p>
-                <div class="flex gap-2">
-                    <!-- Поле теперь редактируемое -->
-                    <input id="setServerInput" type="text" placeholder="https://..." class="w-full bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-300 focus:border-red-500 focus:outline-none">
-                    <button onclick="serverManager.manualSet()" class="bg-blue-600 text-white px-3 rounded text-sm whitespace-nowrap">Сохранить</button>
+                <label class="text-xs text-gray-400 uppercase font-bold">API Сервер (Piped)</label>
+                <div class="flex gap-2 mt-2">
+                    <input id="setServerInput" type="text" class="w-full bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-300">
+                    <button onclick="serverManager.manualSet()" class="bg-blue-600 text-white px-3 rounded text-sm">OK</button>
                 </div>
-                <button onclick="serverManager.findBest(true)" class="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-xs py-2 rounded flex items-center justify-center gap-2">
-                    <i class="fas fa-sync"></i> Авто-поиск лучшего зеркала
-                </button>
+                <div class="mt-2 text-[10px] text-gray-500">
+                    Рекомендуемые:
+                    <br>- https://pipedapi.kavin.rocks (Главный)
+                    <br>- https://api.piped.privacy.com.de (ЕС)
+                    <br>- https://pipedapi.drgns.space (РФ-френдли)
+                </div>
             </div>
 
             <div class="mb-6">
-                <label class="text-xs text-gray-400 uppercase font-bold">Данные</label>
-                <button onclick="subs.export()" class="w-full text-left mt-2 p-2 bg-[#121212] rounded text-sm hover:bg-[#252525]">
-                    <i class="fas fa-file-export mr-2"></i> Экспорт подписок (JSON)
-                </button>
                 <button onclick="app.clearData()" class="w-full text-left mt-2 p-2 bg-[#121212] rounded text-sm text-red-400 hover:bg-[#252525]">
-                    <i class="fas fa-trash mr-2"></i> Очистить кэш и историю
+                    <i class="fas fa-trash mr-2"></i> Сброс данных
                 </button>
             </div>
 
@@ -171,76 +167,68 @@
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
+    <!-- Logic (Piped API Version) -->
     <script>
         const serverManager = {
-            // Обновленный список зеркал (более дружелюбные к CORS)
+            // Список инстансов Piped, которые обычно разрешают CORS
             list: [
-                'https://invidious.fdn.fr',
-                'https://invidious.flokinet.to',
-                'https://invidious.perennialteks.com',
-                'https://yewtu.be',
-                'https://inv.tux.pizza',
-                'https://vid.puffyan.us',
-                'https://invidious.protokolla.fi'
+                'https://pipedapi.kavin.rocks',
+                'https://api.piped.privacy.com.de',
+                'https://pipedapi.drgns.space',
+                'https://api.piped.projectsegfau.lt',
+                'https://pa.il.ax'
             ],
-            current: null,
+            current: 'https://pipedapi.kavin.rocks',
 
             async init() {
-                const cached = localStorage.getItem('fv_server');
+                const cached = localStorage.getItem('fv_server_piped');
                 if (cached) {
                     this.current = cached;
                     ui.updateServer(cached);
-                    // Проверяем, жив ли он, в фоне
-                    this.check(cached).catch(() => this.findBest(true));
-                    return;
+                } else {
+                    // Пробуем найти рабочий
+                    await this.findBest();
                 }
-                await this.findBest();
             },
 
             async check(url) {
+                // Piped check: просто пингуем корень или /streams/trending
                 const c = new AbortController();
-                setTimeout(() => c.abort(), 5000);
-                const r = await fetch(`${url}/api/v1/stats`, { signal: c.signal });
-                if(!r.ok) throw new Error('Server error');
+                setTimeout(() => c.abort(), 4000);
+                // Запрашиваем тренды, это легкий запрос для проверки CORS
+                const r = await fetch(`${url}/trending?region=RU`, { signal: c.signal });
+                if(!r.ok) throw new Error('API Error');
                 return url;
             },
 
-            async findBest(force = false) {
-                if (force) ui.status("Поиск лучшего зеркала...", "blue");
-                
+            async findBest() {
+                ui.status("Поиск рабочего API...", "blue");
                 try {
                     const winner = await Promise.any(this.list.map(url => this.check(url)));
                     this.set(winner);
-                    ui.status("Сервер обновлен", "green");
+                    ui.status("Подключено: " + winner.split('//')[1], "green");
                     setTimeout(() => ui.hideStatus(), 2000);
-                    return winner;
                 } catch (e) {
-                    ui.status("Ошибка CORS. Попробуйте другой сервер вручную.", "red");
-                    this.current = this.list[0]; // Fallback
-                    app.toggleSettings(); // Открываем настройки, чтобы пользователь видел проблему
-                    return this.list[0];
+                    ui.status("Ошибка соединения с API. Попробуйте вручную.", "red");
+                    app.toggleSettings();
                 }
             },
 
             manualSet() {
-                const val = document.getElementById('setServerInput').value.trim();
+                const val = document.getElementById('setServerInput').value.trim().replace(/\/$/, "");
                 if(val.startsWith('http')) {
                     this.set(val);
-                    alert('Сервер сохранен вручную');
-                    app.toggleSettings();
-                    app.loadTrends('News');
+                    alert('API изменен. Перезагрузка...');
+                    location.reload();
                 } else {
-                    alert('Введите полный URL (начиная с https://)');
+                    alert('Нужен URL с https://');
                 }
             },
 
             set(url) {
-                // Убираем слеш в конце, если есть
-                const cleanUrl = url.replace(/\/$/, "");
-                this.current = cleanUrl;
-                localStorage.setItem('fv_server', cleanUrl);
-                ui.updateServer(cleanUrl);
+                this.current = url;
+                localStorage.setItem('fv_server_piped', url);
+                ui.updateServer(url);
             }
         };
 
@@ -248,15 +236,16 @@
             data: JSON.parse(localStorage.getItem('fv_subs') || '[]'),
             toggle() {
                 if (!player.currentVideo) return;
-                const author = player.currentVideo.author;
-                const authorId = player.currentVideo.authorId;
+                // Piped возвращает uploader вместо author
+                const author = player.currentVideo.uploaderName || player.currentVideo.author;
+                const url = player.currentVideo.uploaderUrl; // /channel/ID
                 
                 const idx = this.data.findIndex(s => s.name === author);
                 const btn = document.getElementById('subBtn');
 
                 if (idx === -1) {
-                    this.data.push({ name: author, id: authorId, added: Date.now() });
-                    btn.textContent = "Вы подписаны";
+                    this.data.push({ name: author, url: url, added: Date.now() });
+                    btn.textContent = "Подписан";
                     btn.classList.add('bg-red-600', 'text-white');
                     btn.classList.remove('bg-gray-700');
                 } else {
@@ -267,14 +256,7 @@
                 }
                 localStorage.setItem('fv_subs', JSON.stringify(this.data));
             },
-            isSubbed(authorName) { return this.data.some(s => s.name === authorName); },
-            export() {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.data));
-                const node = document.createElement('a');
-                node.href = dataStr;
-                node.download = "subs_backup.json";
-                node.click();
-            }
+            isSubbed(name) { return this.data.some(s => s.name === name); }
         };
 
         const player = {
@@ -282,41 +264,63 @@
             open(videoData) {
                 this.currentVideo = videoData;
                 document.getElementById('playerOverlay').classList.remove('hidden');
-                document.getElementById('plTitle').textContent = videoData.title;
-                document.getElementById('plAuthor').textContent = videoData.author;
-                document.getElementById('plViews').textContent = videoData.viewCountText;
+                
+                // Нормализация данных (Piped иногда дает разные поля)
+                const title = videoData.title;
+                const author = videoData.uploaderName || videoData.author;
+                const views = this.fmtViews(videoData.views);
+                
+                document.getElementById('plTitle').textContent = title;
+                document.getElementById('plAuthor').textContent = author;
+                document.getElementById('plViews').textContent = views;
                 document.getElementById('plDesc').textContent = "Загрузка...";
                 
                 const subBtn = document.getElementById('subBtn');
-                const isSub = subs.isSubbed(videoData.author);
-                subBtn.textContent = isSub ? "Вы подписаны" : "Подписаться";
+                const isSub = subs.isSubbed(author);
+                subBtn.textContent = isSub ? "Подписан" : "Подписаться";
                 subBtn.className = isSub ? 'bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold transition' : 'bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-full text-xs font-bold transition';
 
-                this.loadSource();
+                this.loadSource(videoData.url); // url = /watch?v=ID
             },
-            loadSource() {
+            
+            loadSource(videoUrl) {
                 const frame = document.getElementById('videoFrame');
                 const loader = document.getElementById('playerLoader');
                 loader.classList.remove('hidden');
-                frame.src = `${serverManager.current}/embed/${this.currentVideo.videoId}?autoplay=1&local=true&dark_mode=true`;
+                
+                // Извлекаем ID
+                // Piped URL: /watch?v=VIDEO_ID
+                const id = videoUrl.split('v=')[1];
+                
+                // Используем Piped Embed (он часто на другом домене, например piped.video)
+                // Это позволяет обойти CORS для самого видео потока
+                frame.src = `https://piped.video/embed/${id}?autoplay=1`;
+                
                 frame.onload = () => loader.classList.add('hidden');
-                this.fetchDetails(this.currentVideo.videoId);
+                this.fetchDetails(id);
             },
+
             async fetchDetails(id) {
                 try {
-                    const res = await fetch(`${serverManager.current}/api/v1/videos/${id}`);
+                    const res = await fetch(`${serverManager.current}/streams/${id}`);
                     const data = await res.json();
                     document.getElementById('plDesc').textContent = data.description || "Нет описания";
-                    this.currentVideo.authorId = data.authorId;
                 } catch(e) {}
             },
+
             minimize() {
                 document.getElementById('playerOverlay').classList.add('hidden');
                 document.getElementById('videoFrame').src = "";
             },
-            async switchServer() {
-                await serverManager.findBest(true);
-                this.loadSource();
+            
+            openInNew() {
+                const id = this.currentVideo.url.split('v=')[1];
+                window.open(`https://piped.video/watch?v=${id}`, '_blank');
+            },
+            
+            fmtViews(v) {
+                if(!v) return "";
+                return new Intl.NumberFormat('ru', { notation: "compact" }).format(v);
             }
         };
 
@@ -333,9 +337,8 @@
             nav(target) {
                 this.view = target;
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                
                 if (target === 'settings') { this.toggleSettings(); return; }
-
+                
                 document.getElementById(`nav${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active');
                 
                 if (target === 'home') {
@@ -346,80 +349,101 @@
                     this.loadSubsFeed();
                 }
             },
+            
             async search(query) {
                 if (!query.trim()) return;
                 ui.loader(true);
                 ui.clearGrid();
                 try {
-                    const url = `${serverManager.current}/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`;
+                    // Piped Search API
+                    const url = `${serverManager.current}/search?q=${encodeURIComponent(query)}&filter=videos`;
                     const res = await fetch(url);
-                    if(!res.ok) throw new Error('Net Error');
+                    if(!res.ok) throw new Error('API Error');
                     const data = await res.json();
-                    ui.render(data);
+                    // Piped возвращает { items: [...] }
+                    ui.render(data.items);
                 } catch (e) {
-                    ui.error("Ошибка сети. Попробуйте сменить сервер в настройках.");
+                    ui.error("Ошибка поиска. Попробуйте сменить сервер.");
                     app.toggleSettings();
                 } finally { ui.loader(false); }
             },
+            
             async loadTrends(category) {
                 ui.loader(true);
                 ui.clearGrid();
                 ui.status(`Загрузка: ${category}...`, "blue");
+                
+                // Эмуляция категорий через поиск, т.к. в Piped тренды по странам, а не темам
+                let q = 'Новости';
+                if(category === 'Tech') q = 'Технологии обзор';
+                if(category === 'Music') q = 'Музыка клипы';
+                
                 try {
-                    const q = category === 'News' ? 'Новости' : category === 'Politics' ? 'Политика' : 'Образование лекции';
-                    const url = `${serverManager.current}/api/v1/search?q=${encodeURIComponent(q)}&sort_by=upload_date&type=video`;
+                    // Piped Search
+                    const url = `${serverManager.current}/search?q=${encodeURIComponent(q)}&filter=videos`;
                     const res = await fetch(url);
-                    if(!res.ok) throw new Error('Net Error');
+                    if(!res.ok) throw new Error('API Error');
                     const data = await res.json();
-                    ui.render(data);
+                    ui.render(data.items);
                     ui.hideStatus();
                 } catch(e) {
-                    ui.error("Ошибка загрузки. Проверьте сервер.");
+                    ui.error("Ошибка сети. Проверьте настройки.");
                 } finally { ui.loader(false); }
             },
+
             async loadSubsFeed() {
                 ui.clearGrid();
                 if (subs.data.length === 0) {
-                    ui.showEmpty("У вас нет подписок. Добавляйте каналы в Избранное.");
+                    ui.showEmpty("Нет подписок");
                     return;
                 }
-                ui.loader(true);
                 const grid = document.getElementById('grid');
-                subs.data.reverse().forEach(sub => {
+                subs.data.forEach(sub => {
                     const card = document.createElement('div');
-                    card.className = "bg-[#1e1e1e] p-4 rounded-lg flex items-center justify-between animate-fade-enter";
-                    card.innerHTML = `<div class="font-bold text-lg">${sub.name}</div><button onclick="app.search('author:${sub.name}')" class="bg-gray-700 px-3 py-1 rounded text-sm">Видео</button>`;
+                    card.className = "bg-[#1e1e1e] p-4 rounded-lg flex items-center justify-between";
+                    card.innerHTML = `<div class="font-bold">${sub.name}</div><button onclick="app.search('${sub.name}')" class="bg-gray-700 px-3 py-1 rounded text-sm">Видео</button>`;
                     grid.appendChild(card);
                 });
-                ui.loader(false);
             },
+            
             toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); },
-            clearData() { if(confirm('Удалить данные?')) { localStorage.clear(); location.reload(); } }
+            clearData() { if(confirm('Сбросить?')) { localStorage.clear(); location.reload(); } }
         };
 
         const ui = {
             grid: document.getElementById('grid'),
             render(items) {
-                if (!items || items.length === 0) { this.showEmpty("Ничего не найдено"); return; }
+                if (!items || items.length === 0) { this.showEmpty("Пусто"); return; }
                 items.forEach((item, idx) => {
-                    if (item.type !== 'video') return;
+                    // В Piped типы могут быть 'stream', 'channel', 'playlist'
+                    if (item.type !== 'stream' && item.type !== 'video') return;
+                    
                     const el = document.createElement('div');
                     el.className = "bg-[#1e1e1e] rounded-lg overflow-hidden cursor-pointer shadow-lg fade-enter";
                     el.style.animationDelay = `${idx * 0.05}s`;
                     el.onclick = () => player.open(item);
-                    const img = item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url;
+                    
+                    const elImg = document.createElement('img');
+                    elImg.className = "w-full h-full object-cover opacity-90";
+                    elImg.loading = "lazy";
+                    elImg.src = item.thumbnail; // Piped проксирует картинки, обычно CORS ок
+                    
+                    // Fallback для картинок
+                    elImg.onerror = function() { this.src = 'https://via.placeholder.com/320x180?text=No+Image'; };
+
                     el.innerHTML = `
                         <div class="relative aspect-video bg-black">
-                            <img src="${img}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition" loading="lazy">
-                            <div class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1 rounded">${this.fmtTime(item.lengthSeconds)}</div>
+                            <div class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1 rounded">${this.fmtTime(item.duration)}</div>
                         </div>
                         <div class="p-3">
                             <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1">${item.title}</h3>
                             <div class="flex justify-between items-center text-xs text-gray-500">
-                                <span>${item.author}</span>
-                                <span>${this.fmtViews(item.viewCount)}</span>
+                                <span>${item.uploaderName}</span>
+                                <span>${this.fmtViews(item.views)}</span>
                             </div>
                         </div>`;
+                    
+                    el.querySelector('.aspect-video').prepend(elImg);
                     this.grid.appendChild(el);
                 });
             },
@@ -441,7 +465,7 @@
                 document.getElementById('setServerInput').value = url;
             },
             fmtTime(s) {
-                if(!s) return "LIVE";
+                if(!s) return "0:00";
                 const m = Math.floor(s/60); const sec = s%60;
                 return `${m}:${sec.toString().padStart(2,'0')}`;
             },
