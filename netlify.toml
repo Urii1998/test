@@ -1,39 +1,11 @@
-# --- НАСТРОЙКИ ПРОКСИ (NETLIFY) ---
-# Обновлено на основе рекомендаций AI: используем "Low-profile" инстансы,
-# которые реже блокируют IP-адреса дата-центров (как Netlify).
+# --- НАСТРОЙКИ ПРОКСИ (NETLIFY + CLOUDFLARE) ---
+# Теперь мы шлем запросы на ваш личный Cloudflare Worker.
+# Он сам разберется с ротацией серверов и заголовками.
 
-# ВАРИАНТ 1: Moomoo (Рекомендация AI - малоизвестный сервер)
 [[redirects]]
   from = "/api/*"
-  to = "https://pipedapi.moomoo.me/:splat"
+  # 👇 ВСТАВЬТЕ СЮДА ССЫЛКУ НА ВАШ WORKER 👇
+  to = "https://black-block-6f08.aslanimilanda.workers.dev/"
   status = 200
   force = true
-  headers = {X-From = "Netlify-Proxy"}
-
-# ВАРИАНТ 2: Yewtu.cafe (Рекомендация AI - community инстанс)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://yewtu.cafe/:splat"
-#   status = 200
-#   force = true
-
-# ВАРИАНТ 3: Tokhmi (США, часто лоялен)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://pipedapi.tokhmi.xyz/:splat"
-#   status = 200
-#   force = true
-
-# ВАРИАНТ 4: Libre (Индия)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://pipedapi-libre.kavin.rocks/:splat"
-#   status = 200
-#   force = true
-
-# ВАРИАНТ 5: Kavin.rocks (Официальный - часто банит Netlify, оставлен как резерв)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://pipedapi.kavin.rocks/:splat"
-#   status = 200
-#   force = true
+  headers = {X-From = "Netlify-Bridge"}
