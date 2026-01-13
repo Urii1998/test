@@ -1,40 +1,39 @@
 # --- НАСТРОЙКИ ПРОКСИ (NETLIFY) ---
-# Этот файл говорит Netlify: "Когда сайт просит /api/..., сходи на сервер Piped и принеси данные".
-# Если видео не грузятся, поменяйте сервер ниже (раскомментируйте другой блок).
+# Обновлено на основе рекомендаций AI: используем "Low-profile" инстансы,
+# которые реже блокируют IP-адреса дата-центров (как Netlify).
 
-# ВАРИАНТ 1: Kavin.rocks (Официальный, мощный, часто работает через серверные прокси)
+# ВАРИАНТ 1: Moomoo (Рекомендация AI - малоизвестный сервер)
 [[redirects]]
   from = "/api/*"
-  to = "https://pipedapi.kavin.rocks/:splat"
+  to = "https://pipedapi.moomoo.me/:splat"
   status = 200
   force = true
   headers = {X-From = "Netlify-Proxy"}
 
-# ВАРИАНТ 2: Tokhmi (США, часто лоялен)
-# Чтобы включить этот, поставьте '#' перед строками Варианта 1 и уберите '#' здесь.
+# ВАРИАНТ 2: Yewtu.cafe (Рекомендация AI - community инстанс)
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://yewtu.cafe/:splat"
+#   status = 200
+#   force = true
+
+# ВАРИАНТ 3: Tokhmi (США, часто лоялен)
 # [[redirects]]
 #   from = "/api/*"
 #   to = "https://pipedapi.tokhmi.xyz/:splat"
 #   status = 200
 #   force = true
 
-# ВАРИАНТ 3: Libre (Индия, меньше нагрузка)
+# ВАРИАНТ 4: Libre (Индия)
 # [[redirects]]
 #   from = "/api/*"
 #   to = "https://pipedapi-libre.kavin.rocks/:splat"
 #   status = 200
 #   force = true
 
-# ВАРИАНТ 4: Adminforge (Германия, строгий, но быстрый)
+# ВАРИАНТ 5: Kavin.rocks (Официальный - часто банит Netlify, оставлен как резерв)
 # [[redirects]]
 #   from = "/api/*"
-#   to = "https://pipedapi.adminforge.de/:splat"
-#   status = 200
-#   force = true
-
-# ВАРИАНТ 5: ProjectSegfau (Если вдруг заработает снова)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://api.piped.projectsegfau.lt/:splat"
+#   to = "https://pipedapi.kavin.rocks/:splat"
 #   status = 200
 #   force = true
