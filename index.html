@@ -30,6 +30,7 @@
         .log-success { color: #00ff88; }
         .log-error { color: #555; }
         .log-process { color: #ffff00; }
+        .log-warn { color: #ffaa00; }
 
         .scan-line {
             width: 100%; height: 2px; background: var(--primary);
@@ -50,7 +51,7 @@
     <div id="bootScreen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md">
             <h1 class="text-3xl font-bold text-white mb-2 tracking-widest text-center">FREE<span class="text-[#00ff88]">VIEW</span></h1>
-            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM INITIALIZATION v3.2</div>
+            <div class="text-xs text-gray-500 text-center mb-8">SYSTEM INITIALIZATION v3.3 (Deep Scan)</div>
             
             <div class="relative bg-[#111] border border-[#333] h-64 rounded-lg p-3 overflow-hidden mb-4">
                 <div class="scan-line"></div>
@@ -107,7 +108,8 @@
             </div>
             
             <div class="mt-12 w-full bg-black aspect-video relative flex items-center justify-center">
-                <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                <!-- Removed unsupported features from allow list -->
+                <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media"></iframe>
                 <div id="playerLoader" class="absolute inset-0 flex items-center justify-center bg-black hidden">
                     <div class="spinner border-t-[#00ff88]"></div>
                 </div>
@@ -135,7 +137,7 @@
             <div id="connectionStatus" class="hidden mb-4 px-3 py-2 bg-[#0a0a0a] border border-[#00ff88]/30 rounded flex items-center justify-between text-xs font-mono">
                 <div class="flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
-                    <span class="text-[#00ff88]">SECURE CONNECTION ESTABLISHED</span>
+                    <span id="connStatusText" class="text-[#00ff88]">CONNECTED</span>
                 </div>
                 <span id="serverLabel" class="text-gray-500">UNKNOWN</span>
             </div>
@@ -201,6 +203,11 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="mb-4 flex items-center gap-2">
+                 <input type="checkbox" id="forceProxyCheck" onchange="serverManager.toggleProxy(this.checked)" class="w-4 h-4 bg-black border-[#333]">
+                 <label for="forceProxyCheck" class="text-xs text-gray-400">Force CORS Proxy Mode</label>
+            </div>
 
             <div class="space-y-2">
                 <button onclick="autoPilot.restart()" class="w-full bg-[#222] hover:bg-[#333] text-white py-2 text-xs border border-[#444] rounded">
@@ -218,7 +225,6 @@
     <!-- Logic -->
     <script>
         // --- 1. PROXY POOL (Massive List) ---
-        // Список публичных зеркал Piped, которые мы будем проверять
         const PROXY_POOL = [
             'https://pipedapi.kavin.rocks',
             'https://api.piped.privacy.com.de',
@@ -238,8 +244,7 @@
 
         const CORS_PROXIES = [
             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://cors-anywhere.herokuapp.com/${url}`
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
         ];
 
         // --- 2. AUTO-PILOT SYSTEM ---
@@ -250,6 +255,7 @@
             bootScreen: document.getElementById('bootScreen'),
             
             workingNode: null,
+            workingNodeMode: false, // false = direct, true = proxy
             
             log(msg, type = 'process') {
                 const line = document.createElement('div');
@@ -259,78 +265,96 @@
             },
 
             async run() {
-                this.log("Initializing Proxy Auto-Pilot...", "process");
-                this.log("Loading node list from GitHub/Local...", "process");
-                
-                // В реальном проекте можно добавить fetch('https://raw.github.../instances.json')
-                // Но мы используем зашитый PROXY_POOL для надежности
+                this.log("Initializing Proxy Auto-Pilot v3.3...", "process");
+                this.log("Scanning nodes for optimal route...", "process");
                 
                 let checked = 0;
                 let bestPing = 9999;
                 
                 const checkNode = async (url) => {
                     const start = Date.now();
+                    let isProxy = false;
+                    let success = false;
+
+                    // 1. Direct Check
                     try {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 сек на тест
-                        
-                        // Проверяем /trending как тест жизни
-                        // credentials: 'omit' важно для некоторых CORS настроек
-                        const res = await fetch(`${url}/trending?region=RU`, { 
-                            signal: controller.signal,
-                            credentials: 'omit'
-                        });
+                        const timeoutId = setTimeout(() => controller.abort(), 2000); 
+                        const res = await fetch(`${url}/trending?region=RU`, { signal: controller.signal, credentials: 'omit' });
                         clearTimeout(timeoutId);
-                        
-                        const ping = Date.now() - start;
-                        if (res.ok) {
-                            this.log(`Node [${url.split('//')[1]}] ONLINE (${ping}ms)`, "success");
-                            if (ping < bestPing) {
-                                bestPing = ping;
-                                this.workingNode = url;
-                                this.bestPingEl.textContent = `Best: ${ping}ms`;
-                                this.bestPingEl.style.color = '#00ff88';
+                        if (res.ok) success = true;
+                    } catch (e) {}
+
+                    // 2. Proxy Check (если прямой не прошел)
+                    if (!success) {
+                        try {
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 3000);
+                            // Пробуем через CorsProxy
+                            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url + '/trending?region=RU')}`;
+                            const res = await fetch(proxyUrl, { signal: controller.signal });
+                            clearTimeout(timeoutId);
+                            if (res.ok) {
+                                success = true;
+                                isProxy = true;
                             }
-                            return true;
-                        }
-                    } catch (e) {
-                        this.log(`Node [${url.split('//')[1]}] UNREACHABLE`, "error");
-                    } finally {
-                        checked++;
-                        this.countEl.textContent = `Targets: ${checked}/${PROXY_POOL.length}`;
+                        } catch (e) {}
                     }
-                    return false;
+
+                    const ping = Date.now() - start;
+
+                    if (success) {
+                        const status = isProxy ? "ONLINE (PROXY)" : "ONLINE (DIRECT)";
+                        const color = isProxy ? "log-warn" : "log-success";
+                        this.log(`Node [${url.split('//')[1]}] ${status} (${ping}ms)`, isProxy ? "warn" : "success");
+                        
+                        if (ping < bestPing) {
+                            bestPing = ping;
+                            this.workingNode = url;
+                            this.workingNodeMode = isProxy; // Запоминаем режим
+                            this.bestPingEl.textContent = `Best: ${ping}ms`;
+                            this.bestPingEl.style.color = '#00ff88';
+                        }
+                    } else {
+                        this.log(`Node [${url.split('//')[1]}] UNREACHABLE`, "error");
+                    }
+                    
+                    checked++;
+                    this.countEl.textContent = `Targets: ${checked}/${PROXY_POOL.length}`;
                 };
 
-                // Запускаем проверки параллельно (по 5 штук)
+                // Запускаем проверки батчами
                 const batchSize = 5;
                 for (let i = 0; i < PROXY_POOL.length; i += batchSize) {
                     const batch = PROXY_POOL.slice(i, i + batchSize);
                     await Promise.all(batch.map(url => checkNode(url)));
                     
-                    // Если нашли уже достаточно хороший сервер (< 500мс), останавливаемся
-                    if (this.workingNode && bestPing < 500) {
-                        this.log("Low latency node found. Stopping scan.", "success");
+                    // Если нашли сервер с хорошим пингом (прямой или прокси), останавливаемся
+                    if (this.workingNode && bestPing < 800) {
+                        this.log("Optimal route found. Engaging...", "success");
                         break;
                     }
                 }
 
                 if (this.workingNode) {
                     this.log(`--- CONNECTION ESTABLISHED ---`, "success");
-                    this.log(`Target: ${this.workingNode}`, "success");
                     setTimeout(() => this.finish(this.workingNode), 800);
                 } else {
-                    this.log("DIRECT CONNECTION FAILED. ENGAGING CORS PROXY MODE.", "error");
-                    // Если все прямые попытки провалились, берем дефолтный и включаем прокси-режим
-                    serverManager.useProxy = true;
-                    this.finish(PROXY_POOL[0]);
+                    this.log("CRITICAL: ALL NODES FAILED. RETRYING...", "error");
+                    // Можно попробовать рестарт или фоллбэк на дефолт
+                    setTimeout(() => this.finish(PROXY_POOL[0]), 2000);
                 }
             },
 
             finish(url) {
                 serverManager.set(url);
+                
+                // Применяем режим (Прокси или Прямой), который определил автопилот
+                if (this.workingNodeMode !== undefined) {
+                    serverManager.toggleProxy(this.workingNodeMode);
+                }
+                
                 this.bootScreen.classList.add('hidden');
-                // Запуск приложения
                 app.init(); 
             },
 
@@ -359,21 +383,40 @@
                 document.getElementById('serverLabel').textContent = url.replace('https://', '');
                 document.getElementById('setServerInput').value = url;
                 document.getElementById('connectionStatus').classList.remove('hidden');
+            },
+            
+            toggleProxy(val) {
+                this.useProxy = val;
+                localStorage.setItem('fv_use_proxy', val);
                 
-                // Проверка IP для "понтов" (проверка приватности)
-                // Не блокирует работу, просто для информации
-                this.checkPrivacy();
+                // Обновляем UI
+                const chk = document.getElementById('forceProxyCheck');
+                if(chk) chk.checked = val;
+                
+                const statusDot = document.getElementById('proxyStatusDot');
+                const statusText = document.getElementById('proxyStatusText');
+                const connText = document.getElementById('connStatusText');
+                
+                if(val) {
+                    if(statusDot) statusDot.className = "w-3 h-3 rounded-full bg-yellow-500";
+                    if(statusText) statusText.innerText = "ACTIVE (PROXY)";
+                    if(connText) connText.innerText = "CONNECTED (VIA PROXY)";
+                } else {
+                    if(statusDot) statusDot.className = "w-3 h-3 rounded-full bg-[#00ff88]";
+                    if(statusText) statusText.innerText = "INACTIVE (DIRECT)";
+                    if(connText) connText.innerText = "CONNECTED (DIRECT)";
+                }
             },
 
             async fetch(endpoint) {
                 const target = `${this.current}${endpoint}`;
                 
-                // 1. Прямой запрос
+                // 1. Прямой запрос (только если прокси выключен)
                 if (!this.useProxy) {
                     try {
                         const res = await fetch(target, { credentials: 'omit' });
                         if (res.ok) return await res.json();
-                    } catch (e) {} // Fail silently, try proxy
+                    } catch (e) {} 
                 }
 
                 // 2. Fallback: CORS Proxy Rotation
@@ -382,10 +425,8 @@
                         const pUrl = proxyFn(target);
                         const res = await fetch(pUrl);
                         if (res.ok) {
-                            // Некоторые прокси возвращают JSON сразу, другие текст
                             const text = await res.text();
                             try { return JSON.parse(text); } catch(e) { 
-                                // AllOrigins заворачивает в contents
                                 const json = JSON.parse(text);
                                 return JSON.parse(json.contents);
                             }
@@ -394,18 +435,6 @@
                 }
                 
                 throw new Error("All uplinks failed");
-            },
-
-            async checkPrivacy() {
-                // Проверка "кто я" через ipwho.is для пользователя
-                // Это показывает пользователю, что сайт работает
-                try {
-                    const res = await fetch('https://ipwho.is/');
-                    const data = await res.json();
-                    // Мы не можем изменить IP пользователя в браузере без VPN,
-                    // но мы можем показать, что коннект к сайту есть.
-                    // Реальная анонимность обеспечивается тем, что видео грузит Piped.
-                } catch(e) {}
             }
         };
 
@@ -471,7 +500,6 @@
                 loader.classList.remove('hidden');
                 
                 const id = videoUrl.split('v=')[1];
-                // Используем надежный домен для embed
                 frame.src = `https://piped.video/embed/${id}?autoplay=1`;
                 
                 frame.onload = () => loader.classList.add('hidden');
@@ -504,13 +532,16 @@
         const app = {
             view: 'home',
             init() {
-                // Если мы здесь, значит AutoPilot уже выбрал сервер
-                // Загружаем начальные данные
                 this.loadTrends('News');
                 
                 document.getElementById('searchInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.search(e.target.value);
                 });
+
+                // Init UI state
+                const chk = document.getElementById('forceProxyCheck');
+                if(chk) chk.checked = serverManager.useProxy;
+                serverManager.toggleProxy(serverManager.useProxy);
             },
             nav(target) {
                 this.view = target;
@@ -563,7 +594,6 @@
                     return;
                 }
                 const grid = document.getElementById('grid');
-                // Reverse to show newest added top
                 [...subs.data].reverse().forEach(sub => {
                     const card = document.createElement('div');
                     card.className = "bg-[#121212] p-4 rounded flex items-center justify-between border border-[#333]";
@@ -627,7 +657,6 @@
             }
         };
 
-        // ЗАПУСК СИСТЕМЫ
         window.onload = () => {
             autoPilot.run();
         };
