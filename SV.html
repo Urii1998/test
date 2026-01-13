@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FreeView | Свободный Доступ</title>
+    
+    <!-- PWA Manifest info (meta tags emulation for simple install) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f0f0f">
+    
+    <!-- Styles & Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root { --bg: #0f0f0f; --surface: #1e1e1e; --primary: #e53e3e; --text: #f3f4f6; }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Скрытие скроллбара но сохранение функционала */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Анимации */
+        .fade-enter { animation: fadeEnter 0.3s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeEnter { to { opacity: 1; transform: translateY(0); } }
+
+        /* Loader */
+        .spinner { width: 24px; height: 24px; border: 3px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Нижнее меню для мобилок */
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active i { transform: scale(1.1); }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- Верхняя шапка -->
+    <header class="bg-[#1e1e1e] border-b border-gray-800 z-20 shrink-0">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="app.nav('home')">
+                <i class="fas fa-satellite-dish text-red-500 text-xl"></i>
+                <span class="font-bold text-lg hidden sm:block">FreeView</span>
+            </div>
+
+            <div class="flex-1 relative max-w-lg">
+                <input type="text" id="searchInput" placeholder="Поиск..." 
+                    class="w-full bg-[#121212] border border-gray-700 text-white pl-10 pr-4 py-2 rounded-full focus:border-red-500 focus:outline-none text-sm">
+                <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-500"></i>
+            </div>
+            
+            <button onclick="app.toggleSettings()" class="text-gray-400 hover:text-white p-2">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Основная область контента (скроллируемая) -->
+    <main id="mainContainer" class="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#0f0f0f] pb-20 no-scrollbar">
+        
+        <!-- Секция: Видео Плеер (Overlay) -->
+        <div id="playerOverlay" class="hidden fixed inset-0 z-50 bg-black flex flex-col">
+            <div class="flex items-center justify-between p-3 bg-black/80 backdrop-blur absolute top-0 w-full z-10">
+                <button onclick="player.minimize()" class="text-white p-2"><i class="fas fa-chevron-down"></i> Свернуть</button>
+                <div class="flex gap-4">
+                    <button onclick="player.switchServer()" class="text-xs bg-red-900/50 text-red-200 px-3 py-1 rounded border border-red-800 flex items-center gap-1">
+                        <i class="fas fa-random"></i> Сменить сервер
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-12 w-full bg-black aspect-video relative flex items-center justify-center">
+                <iframe id="videoFrame" class="w-full h-full" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+                <div id="playerLoader" class="absolute inset-0 flex items-center justify-center bg-black hidden">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="p-4 overflow-y-auto bg-[#1e1e1e] flex-1">
+                <h2 id="plTitle" class="text-lg font-bold leading-snug mb-2"></h2>
+                <div class="flex justify-between items-start border-b border-gray-700 pb-4 mb-4">
+                    <div>
+                        <div id="plAuthor" class="font-bold text-gray-300 text-sm mb-1"></div>
+                        <div id="plViews" class="text-xs text-gray-500"></div>
+                    </div>
+                    <button id="subBtn" onclick="subs.toggle()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-full text-xs font-bold transition">
+                        Подписаться
+                    </button>
+                </div>
+                <div class="bg-[#121212] p-3 rounded text-sm text-gray-400 whitespace-pre-wrap" id="plDesc"></div>
+            </div>
+        </div>
+
+        <!-- Секция: Главная / Результаты -->
+        <div class="max-w-4xl mx-auto p-4 min-h-full">
+            
+            <!-- Инфо-панель -->
+            <div id="statusPanel" class="hidden mb-4 p-3 bg-blue-900/20 border border-blue-800 rounded-lg flex items-center justify-between text-xs">
+                <span id="statusText" class="text-blue-200">Подключение к сети...</span>
+                <span id="currentServer" class="font-mono text-gray-400">...</span>
+            </div>
+
+            <!-- Табы на главной -->
+            <div id="homeTabs" class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
+                <button onclick="app.loadTrends('News')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">📰 Новости</button>
+                <button onclick="app.loadTrends('Politics')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">⚖️ Политика</button>
+                <button onclick="app.loadTrends('Education')" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">🎓 Образование</button>
+                <button onclick="app.loadHistory()" class="whitespace-nowrap bg-[#1e1e1e] border border-gray-700 px-4 py-1.5 rounded-full text-sm hover:border-red-500 transition">🕒 История</button>
+            </div>
+
+            <!-- Контейнер для Видео -->
+            <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-20">
+                <!-- Video Cards Injected Here -->
+            </div>
+            
+            <!-- Лоадер страницы -->
+            <div id="pageLoader" class="hidden py-10 flex justify-center w-full">
+                <div class="spinner"></div>
+            </div>
+
+            <!-- Сообщение "Пусто" или Ошибка -->
+            <div id="emptyState" class="hidden text-center mt-20 text-gray-500">
+                <i class="far fa-compass text-4xl mb-3"></i>
+                <p id="emptyText">Здесь пока пусто</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Нижняя Навигация (Mobile App Style) -->
+    <nav class="fixed bottom-0 w-full bg-[#1e1e1e] border-t border-gray-800 pb-safe z-40">
+        <div class="flex justify-around items-center h-14 max-w-4xl mx-auto">
+            <button onclick="app.nav('home')" class="nav-item active flex flex-col items-center gap-1 text-gray-500 w-full" id="navHome">
+                <i class="fas fa-home text-lg"></i>
+                <span class="text-[10px]">Главная</span>
+            </button>
+            <button onclick="app.nav('subs')" class="nav-item flex flex-col items-center gap-1 text-gray-500 w-full" id="navSubs">
+                <i class="fas fa-heart text-lg"></i>
+                <span class="text-[10px]">Избранное</span>
+            </button>
+            <button onclick="app.nav('settings')" class="nav-item flex flex-col items-center gap-1 text-gray-500 w-full" id="navSet">
+                <i class="fas fa-sliders-h text-lg"></i>
+                <span class="text-[10px]">Опции</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Настройки (Модальное окно) -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+        <div class="bg-[#1e1e1e] w-full max-w-sm rounded-xl border border-gray-700 p-5">
+            <h3 class="text-xl font-bold mb-4">Настройки</h3>
+            
+            <div class="mb-4">
+                <label class="text-xs text-gray-400 uppercase font-bold">Текущий сервер</label>
+                <div class="flex gap-2 mt-1">
+                    <input id="setServerInput" type="text" readonly class="w-full bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-300">
+                    <button onclick="serverManager.findBest(true)" class="bg-red-600 text-white px-3 rounded text-sm"><i class="fas fa-sync"></i></button>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1">Нажмите кнопку обновления, чтобы найти зеркало с лучшим пингом.</p>
+            </div>
+
+            <div class="mb-6">
+                <label class="text-xs text-gray-400 uppercase font-bold">Данные</label>
+                <button onclick="subs.export()" class="w-full text-left mt-2 p-2 bg-[#121212] rounded text-sm hover:bg-[#252525]">
+                    <i class="fas fa-file-export mr-2"></i> Экспорт подписок (JSON)
+                </button>
+                <button onclick="app.clearData()" class="w-full text-left mt-2 p-2 bg-[#121212] rounded text-sm text-red-400 hover:bg-[#252525]">
+                    <i class="fas fa-trash mr-2"></i> Очистить кэш и историю
+                </button>
+            </div>
+
+            <button onclick="app.toggleSettings()" class="w-full bg-gray-700 py-2 rounded font-bold">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. Менеджер Серверов (Core) ---
+        const serverManager = {
+            list: [
+                'https://inv.tux.pizza', 'https://vid.puffyan.us', 'https://invidious.projectsegfau.lt',
+                'https://yt.artemislena.eu', 'https://invidious.drgns.space', 'https://inv.bp.projectsegfau.lt'
+            ],
+            current: null,
+
+            async init() {
+                const cached = localStorage.getItem('fv_server');
+                if (cached) {
+                    this.current = cached;
+                    ui.updateServer(cached);
+                    return; // Используем сохраненный для скорости
+                }
+                await this.findBest();
+            },
+
+            async findBest(force = false) {
+                if (force) ui.status("Поиск лучшего зеркала...", "blue");
+                
+                // Простая гонка запросов
+                const check = async (url) => {
+                    try {
+                        const c = new AbortController();
+                        setTimeout(() => c.abort(), 3500);
+                        const r = await fetch(`${url}/api/v1/stats`, { signal: c.signal });
+                        if(r.ok) return url;
+                        throw new Error();
+                    } catch(e) { throw e; }
+                };
+
+                try {
+                    const winner = await Promise.any(this.list.map(check));
+                    this.current = winner;
+                    localStorage.setItem('fv_server', winner);
+                    ui.updateServer(winner);
+                    ui.status("Сервер обновлен", "green");
+                    setTimeout(() => ui.hideStatus(), 2000);
+                    return winner;
+                } catch (e) {
+                    ui.status("Все серверы заняты. Пробуем первый...", "red");
+                    this.current = this.list[0];
+                    return this.list[0];
+                }
+            }
+        };
+
+        // --- 2. Управление Подписками (Local Database) ---
+        const subs = {
+            data: JSON.parse(localStorage.getItem('fv_subs') || '[]'),
+            
+            toggle() {
+                if (!player.currentVideo) return;
+                const author = player.currentVideo.author;
+                const authorId = player.currentVideo.authorId; // Invidious дает authorId
+                
+                const idx = this.data.findIndex(s => s.name === author);
+                const btn = document.getElementById('subBtn');
+
+                if (idx === -1) {
+                    this.data.push({ name: author, id: authorId, added: Date.now() });
+                    btn.textContent = "Вы подписаны";
+                    btn.classList.add('bg-red-600', 'text-white');
+                    btn.classList.remove('bg-gray-700');
+                } else {
+                    this.data.splice(idx, 1);
+                    btn.textContent = "Подписаться";
+                    btn.classList.remove('bg-red-600', 'text-white');
+                    btn.classList.add('bg-gray-700');
+                }
+                localStorage.setItem('fv_subs', JSON.stringify(this.data));
+            },
+
+            isSubbed(authorName) {
+                return this.data.some(s => s.name === authorName);
+            },
+
+            export() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.data));
+                const node = document.createElement('a');
+                node.href = dataStr;
+                node.download = "subs_backup.json";
+                node.click();
+            }
+        };
+
+        // --- 3. Плеер ---
+        const player = {
+            currentVideo: null,
+            
+            open(videoData) {
+                this.currentVideo = videoData;
+                document.getElementById('playerOverlay').classList.remove('hidden');
+                
+                // UI Info
+                document.getElementById('plTitle').textContent = videoData.title;
+                document.getElementById('plAuthor').textContent = videoData.author;
+                document.getElementById('plViews').textContent = videoData.viewCountText;
+                document.getElementById('plDesc').textContent = "Загрузка описания...";
+                
+                // Button state
+                const subBtn = document.getElementById('subBtn');
+                if (subs.isSubbed(videoData.author)) {
+                    subBtn.textContent = "Вы подписаны";
+                    subBtn.classList.add('bg-red-600', 'text-white');
+                    subBtn.classList.remove('bg-gray-700');
+                } else {
+                    subBtn.textContent = "Подписаться";
+                    subBtn.classList.remove('bg-red-600', 'text-white');
+                    subBtn.classList.add('bg-gray-700');
+                }
+
+                this.loadSource();
+            },
+
+            loadSource() {
+                const frame = document.getElementById('videoFrame');
+                const loader = document.getElementById('playerLoader');
+                loader.classList.remove('hidden');
+                
+                // Используем local=true для проксирования через инстанс
+                // autoplay=1 запускает видео
+                frame.src = `${serverManager.current}/embed/${this.currentVideo.videoId}?autoplay=1&local=true&dark_mode=true`;
+                
+                frame.onload = () => loader.classList.add('hidden');
+                
+                // Подгружаем полное описание отдельно
+                this.fetchDetails(this.currentVideo.videoId);
+            },
+
+            async fetchDetails(id) {
+                try {
+                    const res = await fetch(`${serverManager.current}/api/v1/videos/${id}`);
+                    const data = await res.json();
+                    document.getElementById('plDesc').textContent = data.description || "Нет описания";
+                    // Обновляем authorId для корректной подписки
+                    this.currentVideo.authorId = data.authorId;
+                } catch(e) {}
+            },
+
+            minimize() {
+                document.getElementById('playerOverlay').classList.add('hidden');
+                document.getElementById('videoFrame').src = ""; // Stop playback
+            },
+
+            async switchServer() {
+                await serverManager.findBest(true);
+                this.loadSource(); // Перезагружаем фрейм с новым доменом
+            }
+        };
+
+        // --- 4. Приложение (UI & Logic) ---
+        const app = {
+            view: 'home', // home, subs, settings
+
+            init() {
+                serverManager.init().then(() => {
+                    this.loadTrends('News'); // Стартуем с новостей
+                });
+
+                document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.search(e.target.value);
+                });
+            },
+
+            nav(target) {
+                this.view = target;
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                
+                if (target === 'settings') {
+                    this.toggleSettings();
+                    return; 
+                }
+
+                document.getElementById(`nav${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active');
+                
+                if (target === 'home') {
+                    document.getElementById('homeTabs').classList.remove('hidden');
+                    // Если грид пуст, грузим тренды
+                    if(document.getElementById('grid').children.length === 0) this.loadTrends('News');
+                } else if (target === 'subs') {
+                    document.getElementById('homeTabs').classList.add('hidden');
+                    this.loadSubsFeed();
+                }
+            },
+
+            async search(query) {
+                if (!query.trim()) return;
+                ui.loader(true);
+                ui.clearGrid();
+                
+                try {
+                    const url = `${serverManager.current}/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort_by=relevance`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    ui.render(data);
+                } catch (e) {
+                    ui.error("Ошибка поиска. Попробуйте сменить сервер.");
+                } finally {
+                    ui.loader(false);
+                }
+            },
+
+            async loadTrends(category) {
+                ui.loader(true);
+                ui.clearGrid();
+                ui.status(`Загрузка: ${category}...`, "blue");
+                
+                // Invidious не имеет жестких категорий API "News", но мы можем искать по тегам или trending
+                // Для надежности используем обычный поиск с фильтром по дате, это дает "свежее"
+                try {
+                    const q = category === 'News' ? 'Новости' : category === 'Politics' ? 'Политика' : 'Образование лекции';
+                    const url = `${serverManager.current}/api/v1/search?q=${encodeURIComponent(q)}&sort_by=upload_date&type=video`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    ui.render(data);
+                    ui.hideStatus();
+                } catch(e) {
+                    ui.error("Не удалось загрузить ленту.");
+                } finally {
+                    ui.loader(false);
+                }
+            },
+            
+            async loadSubsFeed() {
+                ui.clearGrid();
+                if (subs.data.length === 0) {
+                    ui.showEmpty("У вас нет подписок. Добавляйте каналы в Избранное.");
+                    return;
+                }
+                
+                ui.loader(true);
+                // Это сложная часть. Invidious API не позволяет получить "фид" из списка ID без аккаунта.
+                // Мы сделаем "эмуляцию": возьмем последние 3 канала, в которые заходили, и найдем их последние видео.
+                // Для полноценного фида нужно делать много запросов, сделаем упрощенно: покажем список каналов.
+                
+                const grid = document.getElementById('grid');
+                subs.data.reverse().forEach(sub => {
+                    const card = document.createElement('div');
+                    card.className = "bg-[#1e1e1e] p-4 rounded-lg flex items-center justify-between animate-fade-enter";
+                    card.innerHTML = `
+                        <div class="font-bold text-lg">${sub.name}</div>
+                        <button onclick="app.search('author:${sub.name}')" class="bg-gray-700 px-3 py-1 rounded text-sm">
+                            Видео
+                        </button>
+                    `;
+                    grid.appendChild(card);
+                });
+                ui.loader(false);
+            },
+
+            toggleSettings() {
+                const m = document.getElementById('settingsModal');
+                m.classList.toggle('hidden');
+            },
+            
+            clearData() {
+                if(confirm('Удалить все подписки и историю?')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+        };
+
+        // --- 5. UI Helpers ---
+        const ui = {
+            grid: document.getElementById('grid'),
+            
+            render(items) {
+                if (!items || items.length === 0) {
+                    this.showEmpty("Ничего не найдено");
+                    return;
+                }
+                
+                items.forEach((item, idx) => {
+                    if (item.type !== 'video') return;
+                    
+                    const el = document.createElement('div');
+                    el.className = "bg-[#1e1e1e] rounded-lg overflow-hidden cursor-pointer shadow-lg fade-enter";
+                    el.style.animationDelay = `${idx * 0.05}s`;
+                    el.onclick = () => player.open(item);
+
+                    // Image fallback proxy logic is handled by server, usually items have full URLs
+                    const img = item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url;
+
+                    el.innerHTML = `
+                        <div class="relative aspect-video bg-black">
+                            <img src="${img}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition" loading="lazy">
+                            <div class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1 rounded">
+                                ${this.fmtTime(item.lengthSeconds)}
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="text-sm font-bold line-clamp-2 leading-tight mb-1">${item.title}</h3>
+                            <div class="flex justify-between items-center text-xs text-gray-500">
+                                <span>${item.author}</span>
+                                <span>${this.fmtViews(item.viewCount)}</span>
+                            </div>
+                        </div>
+                    `;
+                    this.grid.appendChild(el);
+                });
+            },
+
+            clearGrid() { this.grid.innerHTML = ''; document.getElementById('emptyState').classList.add('hidden'); },
+            loader(state) { document.getElementById('pageLoader').classList.toggle('hidden', !state); },
+            showEmpty(msg) { 
+                document.getElementById('emptyText').textContent = msg; 
+                document.getElementById('emptyState').classList.remove('hidden'); 
+            },
+            error(msg) { this.status(msg, 'red'); },
+            
+            status(msg, color) {
+                const p = document.getElementById('statusPanel');
+                const t = document.getElementById('statusText');
+                p.className = `mb-4 p-3 border rounded-lg flex items-center justify-between text-xs ${color === 'red' ? 'bg-red-900/20 border-red-800' : 'bg-blue-900/20 border-blue-800'}`;
+                t.className = color === 'red' ? 'text-red-200' : 'text-blue-200';
+                t.textContent = msg;
+                p.classList.remove('hidden');
+            },
+            hideStatus() { document.getElementById('statusPanel').classList.add('hidden'); },
+            updateServer(url) { 
+                document.getElementById('currentServer').textContent = url.replace('https://', ''); 
+                document.getElementById('setServerInput').value = url;
+            },
+            
+            fmtTime(s) {
+                if(!s) return "LIVE";
+                const m = Math.floor(s/60); const sec = s%60;
+                return `${m}:${sec.toString().padStart(2,'0')}`;
+            },
+            fmtViews(v) {
+                if(!v) return "";
+                return new Intl.NumberFormat('ru', { notation: "compact" }).format(v);
+            }
+        };
+
+        // Start
+        app.init();
+    </script>
+</body>
+</html>
